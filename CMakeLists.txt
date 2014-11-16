@@ -4,8 +4,13 @@ if(COMMAND cmake_policy)
 endif(COMMAND cmake_policy)
 
 #set(Boost_USE_STATIC_LIBS ON)
-ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
-ADD_DEFINITIONS(-DUSE_GPU)
+add_definitions(-DBOOST_LOG_DYN_LINK)
+
+option(USE_GPU "Compile to use GPUs" OFF)
+
+if(USE_GPU)
+    add_definitions(-DUSE_GPU)
+endif()
 
 find_package(Boost 1.55 COMPONENTS log log_setup thread date_time filesystem system program_options REQUIRED)
 find_package(OpenCV 2.3 REQUIRED)
@@ -18,3 +23,6 @@ target_link_libraries( besra-trainer ${Boost_LIBRARIES} ${OpenCV_LIBS} )
 
 add_executable(besra-classify src/besra-classify.cpp src/besra.cpp)
 target_link_libraries( besra-classify ${Boost_LIBRARIES} ${OpenCV_LIBS} )
+
+add_executable(besra-view src/besra-view.cpp src/besra.cpp)
+target_link_libraries( besra-view ${Boost_LIBRARIES} ${OpenCV_LIBS} )

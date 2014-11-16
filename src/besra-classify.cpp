@@ -1,3 +1,22 @@
+/**
+ * Copyright (C) 2014 Andrew E. Bruno
+ *
+ * This file is part of Besra
+ *
+ * Besra is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include "besra.hpp"
 #include <fstream>
 #include "boost/program_options.hpp"
@@ -7,11 +26,9 @@ namespace po = boost::program_options;
 int main(int argc, char** argv) {
     besra::init_log();
 
-    int desc_sz;
-    int dict_sz;
     int limit;
     std::string input_path;
-    std::string svm_cache_path;
+    std::string model_cache_path;
     std::string vocab_cache_path;
     std::string output_path;
 
@@ -19,12 +36,10 @@ int main(int argc, char** argv) {
     desc.add_options()
         ("help,h", "help message")
         ("input,i", po::value<std::string>(&input_path)->required(), "path to input directory")
-        ("svm-cache,j", po::value<std::string>(&svm_cache_path)->required(), "path to SVM cache file")
-        ("vocab-cache,v", po::value<std::string>(&vocab_cache_path)->required(), "path to vocab cache file")
+        ("model,j", po::value<std::string>(&model_cache_path)->required(), "path to stats model cache file")
+        ("vocab,v", po::value<std::string>(&vocab_cache_path)->required(), "path to vocabulary cache file")
         ("output,o", po::value<std::string>(), "path to output file")
-        ("limit,l", po::value<int>(&limit)->default_value(5000), "max number of images to process")
-        ("descriptor-size,s", po::value<int>(&desc_sz)->default_value(64), "descriptor size")
-        ("dictionary-size,d", po::value<int>(&dict_sz)->default_value(150), "dictionary size")
+        ("limit,l", po::value<int>(&limit)->default_value(0), "max number of images to process (0 = unlimited)")
     ;
 
     po::variables_map vm;
@@ -44,7 +59,7 @@ int main(int argc, char** argv) {
     } 
 
     fs::path input_dir(input_path);
-    fs::path svm_cache_file(svm_cache_path);
+    fs::path model_cache_file(model_cache_path);
     fs::path vocab_cache_file(vocab_cache_path);
     fs::path output_file(output_path / fs::path("besra-results.tsv"));
 
@@ -53,8 +68,8 @@ int main(int argc, char** argv) {
       return 1; 
     }
 
-    if(!fs::exists(svm_cache_file)) {
-      std::cerr << "Invalid svm cache file: " << svm_cache_file << std::endl; 
+    if(!fs::exists(model_cache_file)) {
+      std::cerr << "Invalid svm cache file: " << model_cache_file << std::endl; 
       std::cerr << desc << std::endl; 
       return 1; 
     }
@@ -82,23 +97,21 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    BOOST_LOG_TRIVIAL(info) << "Loading vocab";
+    besra::Besra besra; 
+
+    BOOST_LOG_TRIVIAL(info) << "Loading vocab from file: " << vocab_cache_file.string();
     cv::Mat vocabulary;
     cv::FileStorage fs(vocab_cache_file.string(), cv::FileStorage::READ);
     fs["vocabulary"] >> vocabulary;
     fs.release();   
 
-    cv::Ptr<cv::DescriptorMatcher> matcher(new cv::BruteForceMatcher<cv::L2<float> >());
-    cv::Ptr<cv::DescriptorExtractor> extractor(new cv::SurfDescriptorExtractor(4,2,false));
-    cv::BOWImgDescriptorExtractor bow(extractor,matcher);
-    bow.setVocabulary(vocabulary);
+    cv::Ptr<cv::BOWImgDescriptorExtractor> bow = besra.loadBOW(vocabulary);
 
-    BOOST_LOG_TRIVIAL(info) << "Loading training data";
+    BOOST_LOG_TRIVIAL(info) << "Loading stats model from file: " << model_cache_file.string();
 
-    CvSVM svm;
-    svm.load(svm_cache_file.string().c_str());
+    cv::Ptr<CvSVM> model = besra.loadStatModel(model_cache_file, vocabulary);
 
-    BOOST_LOG_TRIVIAL(info) << "Classifying data";
+    BOOST_LOG_TRIVIAL(info) << "Classifying data..";
 
     int count = 0;
     fs::directory_iterator end;
@@ -107,16 +120,18 @@ int main(int argc, char** argv) {
         std::string filepath = iter->path().string();
 
         try{
-            cv::Mat features = besra::extract_features_from_image(filepath, &bow);
-            float res = svm.predict(features);
+            cv::Mat img = besra.readImage(filepath);
+            cv::Mat features = besra.detectAndCompute(img, bow);
+            float res = model->predict(features);
             BOOST_LOG_TRIVIAL(info) << "Class: " << res << " Image: " << filepath;
             fout << res << "\t" << filepath << std::endl;
             count++;
-        } catch(...) { 
-            BOOST_LOG_TRIVIAL(error) << "Failed to classify image: " << filepath;
+        } catch(cv::Exception& e) { 
+            const char* err_msg = e.what();
+            BOOST_LOG_TRIVIAL(error) << "Failed to classify image: " << filepath << " error: " << err_msg;
         }
 
-        if(count > limit) break;
+        if(limit > 0 && count > limit) break;
     }
 
     fout.close();
