@@ -40,6 +40,7 @@ int main(int argc, char** argv) {
         ("output,o", po::value<std::string>(), "path to output directory")
         ("limit,l", po::value<int>(&limit)->default_value(0), "max number of images to process (0 = unlimited)")
         ("clusters,c", po::value<int>(&clusters)->default_value(150), "clusters")
+        ("vocab,v", po::value<std::string>(), "path to vocabulary cache file")
     ;
 
     po::variables_map vm;
@@ -82,6 +83,14 @@ int main(int argc, char** argv) {
 
     fs::path model_cache_file(output_dir / fs::path("stats-model.xml"));
     fs::path vocab_cache_file(output_dir / fs::path("bow-vocab.yml"));
+    if(vm.count("vocab")) {
+        vocab_cache_file = fs::path(vm["vocab"].as<std::string>());
+        if( !fs::exists(vocab_cache_file) ) {
+            std::cerr << "Invalid vocabulary cache file: " << vocab_cache_file << std::endl; 
+            return 1; 
+        }
+    }
+
 
 #ifdef USE_GPU
     int gpus = cv::gpu::getCudaEnabledDeviceCount();
@@ -98,13 +107,23 @@ int main(int argc, char** argv) {
     dirs.push_back(positive_dir);
     dirs.push_back(negative_dir);
 
-    BOOST_LOG_TRIVIAL(info) << "Building vocab..";
-    cv::Mat vocabulary = besra.buildVocabulary(dirs, clusters, limit);
+    cv::Mat vocabulary;
 
-    BOOST_LOG_TRIVIAL(info) << "Saving vocab to cache file: " << vocab_cache_file.string();
-    cv::FileStorage vocab_fs(vocab_cache_file.string(), cv::FileStorage::WRITE);
-    vocab_fs << "vocabulary" << vocabulary;
-    vocab_fs.release();
+    if(vm.count("vocab")) {
+        BOOST_LOG_TRIVIAL(info) << "Loading vocab from file: " << vocab_cache_file.string();
+        cv::FileStorage fs(vocab_cache_file.string(), cv::FileStorage::READ);
+        fs["vocabulary"] >> vocabulary;
+        fs.release();   
+    } else {
+        BOOST_LOG_TRIVIAL(info) << "Building vocab..";
+        vocabulary = besra.buildVocabulary(dirs, clusters, limit);
+
+        BOOST_LOG_TRIVIAL(info) << "Saving vocab to cache file: " << vocab_cache_file.string();
+        cv::FileStorage vocab_fs(vocab_cache_file.string(), cv::FileStorage::WRITE);
+        vocab_fs << "vocabulary" << vocabulary;
+        vocab_fs.release();
+    }
+
 
     BOOST_LOG_TRIVIAL(info) << "Building stats model..";
     cv::Ptr<CvSVM> model = besra.train(positive_dir, negative_dir, vocabulary, limit);
