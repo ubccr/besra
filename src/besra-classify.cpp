@@ -26,17 +26,17 @@ namespace po = boost::program_options;
 int main(int argc, char** argv) {
     besra::init_log();
 
-    int limit;
+    fs::path cwd = fs::initial_path();
     std::string input_path;
     std::string model_cache_path;
     std::string vocab_cache_path;
-    std::string output_path;
+    int limit;
 
     po::options_description desc("Options");
     desc.add_options()
         ("help,h", "help message")
         ("input,i", po::value<std::string>(&input_path)->required(), "path to input directory")
-        ("model,j", po::value<std::string>(&model_cache_path)->required(), "path to stats model cache file")
+        ("model,m", po::value<std::string>(&model_cache_path)->required(), "path to stats model cache file")
         ("vocab,v", po::value<std::string>(&vocab_cache_path)->required(), "path to vocabulary cache file")
         ("output,o", po::value<std::string>(), "path to output file")
         ("limit,l", po::value<int>(&limit)->default_value(0), "max number of images to process (0 = unlimited)")
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     fs::path input_dir(input_path);
     fs::path model_cache_file(model_cache_path);
     fs::path vocab_cache_file(vocab_cache_path);
-    fs::path output_file(output_path / fs::path("besra-results.tsv"));
+    fs::path output_file(cwd / fs::path("besra-results.tsv"));
 
     if(!fs::exists(input_dir) || !fs::is_directory(input_dir)) {
       std::cerr << "Invalid input directory: " << input_dir << std::endl; 
