@@ -6,7 +6,15 @@ Besra - image classification for protein crystallization experiments
 About
 ------------------------------------------------------------------------
 
-Besra is a tool for auto-classifying protein crystallization experiments. 
+Besra is a tool for auto-classifying protein crystallization experiments. The
+classifier is currently binary (crystal/no-crystal).
+
+------------------------------------------------------------------------
+Requirments
+------------------------------------------------------------------------
+
+- boost >= 1.55
+- OpenCV 2.3.x
 
 ------------------------------------------------------------------------
 Installation
@@ -21,11 +29,29 @@ Besra uses cmake. To compile run::
   $ cmake ..
   $ make
 
+If boost is compiled in a non-standard location run::
+
+  $ BOOST_ROOT=/path/to/boost cmake ..
+
+To compile with GPU support::
+
+  $ cmake -DUSE_GPU=on ..
+
 ------------------------------------------------------------------------
 Usage
 ------------------------------------------------------------------------
 
-TODO
+First need to train on a set of positive/negative images::
+
+  $ besra-trainer -p /path/to/crystal -n /path/to/nocrystal
+
+This creates 2 files: stats-model.xml and bow-vocab.yml
+
+To classify a directory of images::
+
+  $ besra-classify -i /path/to/images -m stats-model.xml -v bow-vocab.yml
+
+Results are written to a file named: besra-results.tsv
 
 ------------------------------------------------------------------------
 License
