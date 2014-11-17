@@ -37,11 +37,12 @@ namespace besra {
     }
 
     Besra::Besra() {
-        matcher = new cv::BruteForceMatcher< cv::L2<float> >();
+        //matcher = new cv::BruteForceMatcher< cv::L2<float> >();
+        matcher = new cv::FlannBasedMatcher();
         extractor = new cv::SurfDescriptorExtractor();
-        detector = new cv::SurfFeatureDetector(500);
+        detector = new cv::SurfFeatureDetector(1000);
 #ifdef USE_GPU
-        gpu_surf = new cv::gpu::SURF_GPU(500);
+        gpu_surf = new cv::gpu::SURF_GPU(1000);
 #endif
     }
 
