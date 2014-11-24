@@ -53,10 +53,10 @@ namespace besra {
             cv::Ptr<cv::gpu::SURF_GPU> gpu_surf;
 #endif
 
-            cv::Mat processPath(const fs::path &file, int limit = 0, cv::Ptr<cv::BOWImgDescriptorExtractor> bow = NULL);
+            cv::Mat processPath(const fs::path &file, int limit = 0, int threads = 0, cv::Ptr<cv::BOWImgDescriptorExtractor> bow = NULL);
 
         public:
-            Besra();
+            Besra(int minHessian = 600);
 
             cv::Mat readImage(const fs::path &file);
 
@@ -64,10 +64,10 @@ namespace besra {
             cv::Mat detectAndCompute(const cv::Mat &img);
             cv::Mat detectAndCompute(const cv::Mat &img, cv::Ptr<cv::BOWImgDescriptorExtractor> bow);
 
-            cv::Mat buildVocabulary(std::vector<fs::path> paths, int clusterCount=150, int limit=0, int threads=0);
+            cv::Mat buildVocabulary(std::vector<fs::path> paths, int clusterCount = 150, int limit = 0, int threads = 0);
             cv::Ptr<cv::BOWImgDescriptorExtractor> loadBOW(const cv::Mat &vocabulary);
             cv::Ptr<CvSVM> train(const fs::path &positive, const fs::path &negative, 
-                                 const cv::Mat &vocabulary, int limit=0);
+                                 const cv::Mat &vocabulary, int limit = 0, int threads = 0);
             cv::Ptr<CvSVM> loadStatModel(const fs::path &cache, const cv::Mat &vocabulary);
     };
 
@@ -94,7 +94,7 @@ namespace besra {
         public:
             int id;
             ImageConsumer(int id, cv::Ptr<PathQueue> queue);
-            void operator () (besra::Besra &besra);
+            void operator () (besra::Besra &besra, cv::Ptr<cv::BOWImgDescriptorExtractor> bow = NULL);
             cv::Mat getDescriptors();
     };
 
@@ -105,7 +105,7 @@ namespace besra {
         public:
             int id;
             PathProducer(int id, cv::Ptr<PathQueue> queue);
-            void operator () (std::vector<fs::path> paths, int limit);
+            void operator () (const fs::path &path, int limit);
     };
 }
 

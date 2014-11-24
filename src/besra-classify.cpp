@@ -31,6 +31,7 @@ int main(int argc, char** argv) {
     std::string model_cache_path;
     std::string vocab_cache_path;
     int limit;
+    int minHessian;
 
     po::options_description desc("Options");
     desc.add_options()
@@ -40,6 +41,7 @@ int main(int argc, char** argv) {
         ("vocab,v", po::value<std::string>(&vocab_cache_path)->required(), "path to vocabulary cache file")
         ("output,o", po::value<std::string>(), "path to output file")
         ("limit,l", po::value<int>(&limit)->default_value(0), "max number of images to process (0 = unlimited)")
+        ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
     ;
 
     po::variables_map vm;
@@ -97,7 +99,7 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    besra::Besra besra; 
+    besra::Besra besra(minHessian); 
 
     BOOST_LOG_TRIVIAL(info) << "Loading vocab from file: " << vocab_cache_file.string();
     cv::Mat vocabulary;

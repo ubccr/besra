@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
     int clusters;
     int limit;
     int threads;
+    int minHessian;
     std::string positive_path;
     std::string negative_path;
     std::string output_path;
@@ -42,6 +43,7 @@ int main(int argc, char** argv) {
         ("limit,l", po::value<int>(&limit)->default_value(0), "max number of images to process (0 = unlimited)")
         ("threads,t", po::value<int>(&threads)->default_value(0), "number of threads to spawn")
         ("clusters,c", po::value<int>(&clusters)->default_value(150), "clusters")
+        ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("vocab,v", po::value<std::string>(), "path to vocabulary cache file")
     ;
 
@@ -103,7 +105,7 @@ int main(int argc, char** argv) {
         return 1; 
     }
 #endif
-    besra::Besra besra; 
+    besra::Besra besra(minHessian); 
 
     std::vector<fs::path> dirs;
     dirs.push_back(positive_dir);
@@ -128,7 +130,7 @@ int main(int argc, char** argv) {
 
 
     BOOST_LOG_TRIVIAL(info) << "Building stats model..";
-    cv::Ptr<CvSVM> model = besra.train(positive_dir, negative_dir, vocabulary, limit);
+    cv::Ptr<CvSVM> model = besra.train(positive_dir, negative_dir, vocabulary, limit, threads);
 
     BOOST_LOG_TRIVIAL(info) << "Saving stats model to cache file: " << model_cache_file.string();
     model->save(model_cache_file.string().c_str());

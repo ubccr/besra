@@ -36,13 +36,13 @@ namespace besra {
         );
     }
 
-    Besra::Besra() {
+    Besra::Besra(int minHessian) {
         //matcher = new cv::BruteForceMatcher< cv::L2<float> >();
         matcher = new cv::FlannBasedMatcher();
         extractor = new cv::SurfDescriptorExtractor();
-        detector = new cv::SurfFeatureDetector(500);
+        detector = new cv::SurfFeatureDetector(minHessian);
 #ifdef USE_GPU
-        gpu_surf = new cv::gpu::SURF_GPU(500);
+        gpu_surf = new cv::gpu::SURF_GPU(minHessian);
 #endif
     }
 
@@ -96,17 +96,33 @@ namespace besra {
 
     cv::Mat Besra::buildVocabulary(std::vector<fs::path> paths, int clusterCount, int limit, int threads) {
         cv::BOWKMeansTrainer bowtrainer(clusterCount);
+
+        for(std::vector<fs::path>::iterator d = paths.begin(); d != paths.end(); ++d) {
+            cv::Mat descriptors = processPath(*d, limit, threads);
+            for(int i = 0; i < descriptors.rows; i++) {
+                bowtrainer.add(descriptors.row(i));
+            }
+        }
         
+        BOOST_LOG_TRIVIAL(warning) << "<buildVocabulary> Clustering.." << bowtrainer.getDescriptors().size();
+        cv::Mat vocabulary = bowtrainer.cluster();
+
+        return vocabulary;
+    }
+
+    cv::Mat Besra::processPath(const fs::path &path, int limit, int threads, cv::Ptr<cv::BOWImgDescriptorExtractor> bow) {
+        cv::Mat descriptors;
+
         if(threads > 0) {
             cv::Ptr<besra::PathQueue> queue = new besra::PathQueue();
             besra::PathProducer pp(1, queue);
-            boost::thread pt(boost::ref(pp), paths, limit);
+            boost::thread pt(boost::ref(pp), path, limit);
 
             besra::ImageConsumer *cons[threads];
             boost::thread_group g;
             for(int i = 0; i < threads; i++) {
                 besra::ImageConsumer *ic = new besra::ImageConsumer(i, queue);
-                g.add_thread(new boost::thread(boost::ref(*ic), *this));
+                g.add_thread(new boost::thread(boost::ref(*ic), *this, bow));
                 cons[i] = ic;
             }
 
@@ -117,75 +133,38 @@ namespace besra {
             for(int i = 0; i < threads; i++) {
                 BOOST_LOG_TRIVIAL(info) << "ImageConsumer Thread " << cons[i]->id << " rows: " 
                                         << cons[i]->getDescriptors().rows;
-                cv::Mat descriptors = cons[i]->getDescriptors();
-                for(int j = 0; j < descriptors.rows; j++) {
-                    bowtrainer.add(descriptors.row(j));
-                }
+                cv::Mat d = cons[i]->getDescriptors();
+                descriptors.push_back(d);
                 delete cons[i];
             }
         } else {
+            int count = 0;
+            fs::directory_iterator end;
+            for(fs::directory_iterator iter(path) ; iter != end ; ++iter) {
+                if(!fs::is_regular_file(iter->status())) continue;
 
-            for(std::vector<fs::path>::iterator d = paths.begin(); d != paths.end(); ++d) {
-                int count = 0;
-                fs::directory_iterator end;
-                for(fs::directory_iterator iter(*d) ; iter != end ; ++iter) {
-                    if(!fs::is_regular_file(iter->status())) continue;
-                    cv::Mat img = readImage(iter->path());
-                    cv::Mat descriptors = detectAndCompute(img);
-                    if(descriptors.empty()) {
-                        BOOST_LOG_TRIVIAL(warning) << "<buildVocabulary> Error computing descriptors for image: " 
-                                                   << iter->path().string();
-                        continue;
-                    }
-
-                    for(int i = 0; i < descriptors.rows; i++) {
-                        bowtrainer.add(descriptors.row(i));
-                    }
-                    count++;
-                    if(count % 100 == 0) {
-                        BOOST_LOG_TRIVIAL(info) << "<buildVocabulary> Processed: " << count;
-                    }
-
-                    if(limit > 0 && count >= limit) break;
+                cv::Mat img = readImage(iter->path());
+                cv::Mat d;
+                if(bow == NULL) { 
+                    d = detectAndCompute(img);
+                } else {
+                    d = detectAndCompute(img, bow);
                 }
+
+                if(d.empty()) {
+                    BOOST_LOG_TRIVIAL(warning) << "Empty descriptors for image: " << iter->path().string();
+                    continue;
+                }
+
+                descriptors.push_back(d);
+                count++;
+                
+                if(count % 100 == 0) {
+                    BOOST_LOG_TRIVIAL(info) << "Proccessed images processed: " << count;
+                }
+
+                if(limit > 0 && count >= limit) break;
             }
-        }
-
-        BOOST_LOG_TRIVIAL(warning) << "<buildVocabulary> Clustering.." << bowtrainer.getDescriptors().size();
-        cv::Mat vocabulary = bowtrainer.cluster();
-
-        return vocabulary;
-    }
-
-    cv::Mat Besra::processPath(const fs::path &path, int limit, cv::Ptr<cv::BOWImgDescriptorExtractor> bow) {
-        cv::Mat descriptors;
-
-        int count = 0;
-        fs::directory_iterator end;
-        for(fs::directory_iterator iter(path) ; iter != end ; ++iter) {
-            if(!fs::is_regular_file(iter->status())) continue;
-
-            cv::Mat img = readImage(iter->path());
-            cv::Mat d;
-            if(bow == NULL) { 
-                d = detectAndCompute(img);
-            } else {
-                d = detectAndCompute(img, bow);
-            }
-
-            if(d.empty()) {
-                BOOST_LOG_TRIVIAL(warning) << "Empty descriptors for image: " << iter->path().string();
-                continue;
-            }
-
-            descriptors.push_back(d);
-            count++;
-            
-            if(count % 100 == 0) {
-                BOOST_LOG_TRIVIAL(info) << "Proccessed images processed: " << count;
-            }
-
-            if(limit > 0 && count >= limit) break;
         }
 
         return descriptors;
@@ -198,18 +177,18 @@ namespace besra {
     }
 
     cv::Ptr<CvSVM> Besra::train(const fs::path &positive, const fs::path &negative, 
-                                const cv::Mat &vocabulary, int limit) {
+                                const cv::Mat &vocabulary, int limit, int threads) {
         cv::Ptr<cv::BOWImgDescriptorExtractor> bow = loadBOW(vocabulary);
 
         cv::Mat samples;
         cv::Mat labels;
 
-        cv::Mat pos_descriptors = processPath(positive, limit, bow);
+        cv::Mat pos_descriptors = processPath(positive, limit, threads, bow);
         samples.push_back(pos_descriptors);
         cv::Mat ones = cv::Mat::ones(pos_descriptors.rows, 1, bow->descriptorType());
         labels.push_back(ones);
 
-        cv::Mat neg_descriptors = processPath(negative, limit, bow);
+        cv::Mat neg_descriptors = processPath(negative, limit, threads, bow);
         samples.push_back(neg_descriptors);
         cv::Mat zeros = cv::Mat::zeros(neg_descriptors.rows, 1, bow->descriptorType());
         labels.push_back(zeros);
@@ -242,12 +221,18 @@ namespace besra {
         return descriptors;
     }
 
-    void ImageConsumer::operator () (besra::Besra &besra) {
+    void ImageConsumer::operator () (besra::Besra &besra, cv::Ptr<cv::BOWImgDescriptorExtractor> bow) {
         fs::path path;
         while(!queue->isDone()) {
             while(queue->pop(path)) {
                 cv::Mat img = besra.readImage(path);
-                cv::Mat d = besra.detectAndCompute(img);
+                cv::Mat d;
+                if(bow == NULL) { 
+                    d = besra.detectAndCompute(img);
+                } else {
+                    d = besra.detectAndCompute(img, bow);
+                }
+
                 if(d.empty()) {
                     BOOST_LOG_TRIVIAL(warning) << "ImageConsumer Thread " << id 
                                                <<  " empty descriptors for image: " << path;
@@ -258,12 +243,19 @@ namespace besra {
         }
         while(queue->pop(path)) {
             cv::Mat img = besra.readImage(path);
-            cv::Mat d = besra.detectAndCompute(img);
+            cv::Mat d;
+            if(bow == NULL) { 
+                d = besra.detectAndCompute(img);
+            } else {
+                d = besra.detectAndCompute(img, bow);
+            }
+
             if(d.empty()) {
                 BOOST_LOG_TRIVIAL(warning) << "ImageConsumer Thread " << id 
                                            <<  " empty descriptors for image: " << path;
                 continue;
             }
+
             descriptors.push_back(d);
         }
     }
@@ -273,16 +265,14 @@ namespace besra {
         this->queue=queue;
     }
 
-    void PathProducer::operator () (std::vector<fs::path> paths, int limit) {
-        for(std::vector<fs::path>::iterator d = paths.begin(); d != paths.end(); ++d) {
-            int count = 0;
-            fs::directory_iterator end;
-            for(fs::directory_iterator iter(*d) ; iter != end ; ++iter) {
-                if(!fs::is_regular_file(iter->status())) continue;
-                queue->push(iter->path());
-                count++;
-                if(limit > 0 && count >= limit) break;
-            }
+    void PathProducer::operator () (const fs::path &path, int limit) {
+        int count = 0;
+        fs::directory_iterator end;
+        for(fs::directory_iterator iter(path) ; iter != end ; ++iter) {
+            if(!fs::is_regular_file(iter->status())) continue;
+            queue->push(iter->path());
+            count++;
+            if(limit > 0 && count >= limit) break;
         }
     }
 

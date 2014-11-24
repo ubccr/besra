@@ -27,9 +27,11 @@ int main(int argc, char** argv) {
     besra::init_log();
 
     std::string img_path;
+    int minHessian;
     po::options_description desc("Options");
     desc.add_options()
         ("help,h", "help message")
+        ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("image,i", po::value<std::string>(&img_path)->required(), "path to image file")
     ;
 
@@ -67,44 +69,17 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    besra::Besra besra; 
+    besra::Besra besra(minHessian); 
 
-    /* TODO: display keypoints in image */
+    cv::Mat img = besra.readImage(img_file);
+    std::vector<cv::KeyPoint> keypoints = besra.detectKeypoints(img);
 
-    std::string line = "hello,world,\"bob\",a,looski";
+    cv::Mat img_keypoints;
+      
+    cv::drawKeypoints(img, keypoints, img_keypoints, cv::Scalar::all(-1), cv::DrawMatchesFlags::DEFAULT);
+    cv::imshow("Keypoints: " + img_file.filename().string(), img_keypoints);
 
-    boost::escaped_list_separator<char> sep('\\', ',', '\"');
-    boost::tokenizer<boost::escaped_list_separator<char> > tk(line, sep);
-    for(boost::tokenizer<boost::escaped_list_separator<char> >::iterator i(tk.begin()); i!=tk.end();++i) {
-        std::cout << *i << std::endl;
-    }
-
-    cv::Ptr<besra::PathQueue> queue = new besra::PathQueue();
-    besra::PathProducer pp(1, queue);
-
-    std::vector<fs::path> dirs;
-    fs::path p1("/ifs/projects/ccrstaff/aebruno2/hwi/train/crystal/");
-    dirs.push_back(p1);
-
-    boost::thread pt(boost::ref(pp), dirs, 0);
-
-    int max_threads = 10;
-
-    besra::ImageConsumer *cons[max_threads];
-    boost::thread_group g;
-    for(int i = 0; i < max_threads; i++) {
-        besra::ImageConsumer *ic = new besra::ImageConsumer(i, queue);
-        g.add_thread(new boost::thread(boost::ref(*ic), besra));
-        cons[i] = ic;
-    }
-
-    pt.join();
-    queue->markDone();
-    g.join_all();
-
-    for(int i = 0; i < max_threads; i++) {
-        std::cout << cons[i]->id << ": " << cons[i]->getDescriptors().rows << std::endl;
-    }
+    cv::waitKey(0);
 
     return 0;
 }
