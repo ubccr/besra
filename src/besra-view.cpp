@@ -18,7 +18,8 @@
  *
  */
 #include "besra.hpp"
-#include "boost/program_options.hpp"
+#include <boost/program_options.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace po = boost::program_options;
 
@@ -69,6 +70,41 @@ int main(int argc, char** argv) {
     besra::Besra besra; 
 
     /* TODO: display keypoints in image */
+
+    std::string line = "hello,world,\"bob\",a,looski";
+
+    boost::escaped_list_separator<char> sep('\\', ',', '\"');
+    boost::tokenizer<boost::escaped_list_separator<char> > tk(line, sep);
+    for(boost::tokenizer<boost::escaped_list_separator<char> >::iterator i(tk.begin()); i!=tk.end();++i) {
+        std::cout << *i << std::endl;
+    }
+
+    cv::Ptr<besra::PathQueue> queue = new besra::PathQueue();
+    besra::PathProducer pp(1, queue);
+
+    std::vector<fs::path> dirs;
+    fs::path p1("/ifs/projects/ccrstaff/aebruno2/hwi/train/crystal/");
+    dirs.push_back(p1);
+
+    boost::thread pt(boost::ref(pp), dirs, 0);
+
+    int max_threads = 10;
+
+    besra::ImageConsumer *cons[max_threads];
+    boost::thread_group g;
+    for(int i = 0; i < max_threads; i++) {
+        besra::ImageConsumer *ic = new besra::ImageConsumer(i, queue);
+        g.add_thread(new boost::thread(boost::ref(*ic), besra));
+        cons[i] = ic;
+    }
+
+    pt.join();
+    queue->markDone();
+    g.join_all();
+
+    for(int i = 0; i < max_threads; i++) {
+        std::cout << cons[i]->id << ": " << cons[i]->getDescriptors().rows << std::endl;
+    }
 
     return 0;
 }

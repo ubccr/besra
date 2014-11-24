@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
     fs::path cwd = fs::initial_path();
     int clusters;
     int limit;
+    int threads;
     std::string positive_path;
     std::string negative_path;
     std::string output_path;
@@ -39,6 +40,7 @@ int main(int argc, char** argv) {
         ("negative,n", po::value<std::string>(&negative_path)->required(), "path to directory of negative images (no crystals)")
         ("output,o", po::value<std::string>(), "path to output directory")
         ("limit,l", po::value<int>(&limit)->default_value(0), "max number of images to process (0 = unlimited)")
+        ("threads,t", po::value<int>(&threads)->default_value(0), "number of threads to spawn")
         ("clusters,c", po::value<int>(&clusters)->default_value(150), "clusters")
         ("vocab,v", po::value<std::string>(), "path to vocabulary cache file")
     ;
@@ -116,7 +118,7 @@ int main(int argc, char** argv) {
         fs.release();   
     } else {
         BOOST_LOG_TRIVIAL(info) << "Building vocab..";
-        vocabulary = besra.buildVocabulary(dirs, clusters, limit);
+        vocabulary = besra.buildVocabulary(dirs, clusters, limit, threads);
 
         BOOST_LOG_TRIVIAL(info) << "Saving vocab to cache file: " << vocab_cache_file.string();
         cv::FileStorage vocab_fs(vocab_cache_file.string(), cv::FileStorage::WRITE);

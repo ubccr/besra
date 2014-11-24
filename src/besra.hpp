@@ -23,16 +23,19 @@
 
 #include <iostream>
 #include <utility>
-#include <list>
-#include "boost/log/trivial.hpp"
-#include "boost/log/utility/setup.hpp"
-#include "boost/filesystem.hpp"
-#include "opencv2/core/core.hpp"
-#include "opencv2/ml/ml.hpp"
-#include "opencv2/features2d/features2d.hpp"
-#include "opencv2/highgui/highgui.hpp"
+#include <queue>
+#include <boost/log/trivial.hpp>
+#include <boost/log/utility/setup.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/atomic.hpp>
+#include <boost/thread/thread.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/ml/ml.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/nonfree/nonfree.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #ifdef USE_GPU
-#include "opencv2/gpu/gpu.hpp"
+#include <opencv2/gpu/gpu.hpp>
 #endif
 
 namespace fs = boost::filesystem;
@@ -50,6 +53,8 @@ namespace besra {
             cv::Ptr<cv::gpu::SURF_GPU> gpu_surf;
 #endif
 
+            cv::Mat processPath(const fs::path &file, int limit = 0, cv::Ptr<cv::BOWImgDescriptorExtractor> bow = NULL);
+
         public:
             Besra();
 
@@ -59,11 +64,48 @@ namespace besra {
             cv::Mat detectAndCompute(const cv::Mat &img);
             cv::Mat detectAndCompute(const cv::Mat &img, cv::Ptr<cv::BOWImgDescriptorExtractor> bow);
 
-            cv::Mat buildVocabulary(std::vector<fs::path> dirs, int clusterCount=150, int limit=0);
+            cv::Mat buildVocabulary(std::vector<fs::path> paths, int clusterCount=150, int limit=0, int threads=0);
             cv::Ptr<cv::BOWImgDescriptorExtractor> loadBOW(const cv::Mat &vocabulary);
-            cv::Ptr<CvSVM> train(const fs::path &positive_dir, const fs::path &negative_dir, 
+            cv::Ptr<CvSVM> train(const fs::path &positive, const fs::path &negative, 
                                  const cv::Mat &vocabulary, int limit=0);
             cv::Ptr<CvSVM> loadStatModel(const fs::path &cache, const cv::Mat &vocabulary);
+    };
+
+    class PathQueue {
+        private:
+            std::queue<fs::path> queue;
+            mutable boost::mutex mutex;
+            boost::condition_variable waitCondition;
+            bool done;
+        public:
+            PathQueue();
+            void markDone();
+            bool isDone();
+            bool empty();
+            void push(const fs::path &path);
+            bool pop(fs::path &path);
+    };
+
+    class ImageConsumer {
+        private:
+            cv::Ptr<PathQueue> queue;
+            cv::Mat descriptors;
+
+        public:
+            int id;
+            ImageConsumer(int id, cv::Ptr<PathQueue> queue);
+            void operator () (besra::Besra &besra);
+            cv::Mat getDescriptors();
+    };
+
+    class PathProducer {
+        private:
+            cv::Ptr<PathQueue> queue;
+
+        public:
+            int id;
+            PathProducer(int id, cv::Ptr<PathQueue> queue);
+            void operator () (std::vector<fs::path> paths, int limit);
     };
 }
 
