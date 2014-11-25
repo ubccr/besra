@@ -160,7 +160,7 @@ namespace besra {
                 count++;
                 
                 if(count % 100 == 0) {
-                    BOOST_LOG_TRIVIAL(info) << "Proccessed images processed: " << count;
+                    BOOST_LOG_TRIVIAL(info) << "Images processed: " << count;
                 }
 
                 if(limit > 0 && count >= limit) break;
@@ -213,6 +213,7 @@ namespace besra {
     }
 
     ImageConsumer::ImageConsumer(int id, cv::Ptr<PathQueue> queue) {
+        this->count = 0;
         this->id = id;
         this->queue = queue;
     }
@@ -233,6 +234,12 @@ namespace besra {
                     d = besra.detectAndCompute(img, bow);
                 }
 
+                count++;
+                if(count % 100 == 0) {
+                    BOOST_LOG_TRIVIAL(info) << "ImageConsumer Thread " << id 
+                                               <<  " progress: " << count;
+                }
+
                 if(d.empty()) {
                     BOOST_LOG_TRIVIAL(warning) << "ImageConsumer Thread " << id 
                                                <<  " empty descriptors for image: " << path;
@@ -248,6 +255,12 @@ namespace besra {
                 d = besra.detectAndCompute(img);
             } else {
                 d = besra.detectAndCompute(img, bow);
+            }
+
+            count++;
+            if(count % 100 == 0) {
+                BOOST_LOG_TRIVIAL(info) << "ImageConsumer Thread " << id 
+                                           <<  " progress: " << count;
             }
 
             if(d.empty()) {

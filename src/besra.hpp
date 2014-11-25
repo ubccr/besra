@@ -88,6 +88,7 @@ namespace besra {
 
     class ImageConsumer {
         private:
+            int count;
             cv::Ptr<PathQueue> queue;
             cv::Mat descriptors;
 
