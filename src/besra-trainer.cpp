@@ -67,13 +67,13 @@ int main(int argc, char** argv) {
     fs::path negative_dir(negative_path);
     fs::path output_dir(cwd);
 
-    if(!fs::exists(positive_dir) || !fs::is_directory(positive_dir)) {
-      std::cerr << "Invalid directory: " << positive_dir << std::endl; 
+    if(!fs::exists(positive_dir)) {
+      std::cerr << "Invalid file or directory: " << positive_dir << std::endl; 
       return 1; 
     }
 
-    if(!fs::exists(negative_dir) || !fs::is_directory(negative_dir)) {
-      std::cerr << "Invalid directory: " << negative_dir << std::endl; 
+    if(!fs::exists(negative_dir)) {
+      std::cerr << "Invalid file or directory: " << negative_dir << std::endl; 
       return 1; 
     }
 

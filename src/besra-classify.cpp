@@ -18,7 +18,6 @@
  *
  */
 #include "besra.hpp"
-#include <fstream>
 #include "boost/program_options.hpp"
 
 namespace po = boost::program_options;
@@ -65,7 +64,7 @@ int main(int argc, char** argv) {
     fs::path vocab_cache_file(vocab_cache_path);
     fs::path output_file(cwd / fs::path("besra-results.tsv"));
 
-    if(!fs::exists(input_dir) || !fs::is_directory(input_dir)) {
+    if(!fs::exists(input_dir)) {
       std::cerr << "Invalid input directory: " << input_dir << std::endl; 
       return 1; 
     }
@@ -116,24 +115,47 @@ int main(int argc, char** argv) {
     BOOST_LOG_TRIVIAL(info) << "Classifying data..";
 
     int count = 0;
-    fs::directory_iterator end;
-    for(fs::directory_iterator iter(input_dir) ; iter != end ; ++iter) {
-        if(!fs::is_regular_file(iter->status())) continue;
-        std::string filepath = iter->path().string();
+    if(fs::is_directory(input_dir)) {
+        fs::directory_iterator end;
+        for(fs::directory_iterator iter(input_dir) ; iter != end ; ++iter) {
+            if(!fs::is_regular_file(iter->status())) continue;
+            std::string filepath = iter->path().string();
 
-        try{
-            cv::Mat img = besra.readImage(filepath);
-            cv::Mat features = besra.detectAndCompute(img, bow);
-            float res = model->predict(features);
-            BOOST_LOG_TRIVIAL(info) << "Class: " << res << " Image: " << filepath;
-            fout << res << "\t" << filepath << std::endl;
-            count++;
-        } catch(cv::Exception& e) { 
-            const char* err_msg = e.what();
-            BOOST_LOG_TRIVIAL(error) << "Failed to classify image: " << filepath << " error: " << err_msg;
+            try{
+                float res = besra.classify(filepath, bow, model);
+                BOOST_LOG_TRIVIAL(info) << "Class: " << res << " Image: " << filepath;
+                fout << res << "\t" << filepath << std::endl;
+                count++;
+            } catch(cv::Exception& e) { 
+                const char* err_msg = e.what();
+                BOOST_LOG_TRIVIAL(error) << "Failed to classify image: " << filepath << " error: " << err_msg;
+            }
+
+            if(limit > 0 && count > limit) break;
         }
+    } else if(fs::is_regular_file(input_dir)) {
+        std::ifstream ifs(input_dir.c_str());
+        std::string line;
+        while(std::getline(ifs, line)) {
+            fs::path img_path(line);
+            if(!fs::is_regular_file(img_path)) continue;
 
-        if(limit > 0 && count > limit) break;
+            std::string filepath = img_path.string();
+
+            try{
+                float res = besra.classify(filepath, bow, model);
+                BOOST_LOG_TRIVIAL(info) << "Class: " << res << " Image: " << filepath;
+                fout << res << "\t" << filepath << std::endl;
+                count++;
+            } catch(cv::Exception& e) { 
+                const char* err_msg = e.what();
+                BOOST_LOG_TRIVIAL(error) << "Failed to classify image: " << filepath << " error: " << err_msg;
+            }
+
+            if(limit > 0 && count > limit) break;
+        }
+    } else {
+        BOOST_LOG_TRIVIAL(error) << "Invalid input file/directory: " << input_dir;
     }
 
     fout.close();

@@ -22,6 +22,7 @@
 
 
 #include <iostream>
+#include <fstream>
 #include <utility>
 #include <queue>
 #include <boost/log/trivial.hpp>
@@ -69,6 +70,7 @@ namespace besra {
             cv::Ptr<CvSVM> train(const fs::path &positive, const fs::path &negative, 
                                  const cv::Mat &vocabulary, int limit = 0, int threads = 0);
             cv::Ptr<CvSVM> loadStatModel(const fs::path &cache, const cv::Mat &vocabulary);
+            float classify(const fs::path &path, cv::Ptr<cv::BOWImgDescriptorExtractor> bow, cv::Ptr<CvSVM> model);
     };
 
     class PathQueue {
