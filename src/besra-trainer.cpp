@@ -30,15 +30,13 @@ int main(int argc, char** argv) {
     int limit;
     int threads;
     int minHessian;
-    std::string positive_path;
-    std::string negative_path;
+    std::string input_path;
     std::string output_path;
 
     po::options_description desc("Options");
     desc.add_options()
         ("help,h", "help message")
-        ("positive,p", po::value<std::string>(&positive_path)->required(), "path to directory of positive images (crystals)")
-        ("negative,n", po::value<std::string>(&negative_path)->required(), "path to directory of negative images (no crystals)")
+        ("input,i", po::value<std::string>(&input_path)->required(), "path to input file")
         ("output,o", po::value<std::string>(), "path to output directory")
         ("limit,l", po::value<int>(&limit)->default_value(0), "max number of images to process (0 = unlimited)")
         ("threads,t", po::value<int>(&threads)->default_value(0), "number of threads to spawn")
@@ -63,17 +61,11 @@ int main(int argc, char** argv) {
       return 1; 
     } 
 
-    fs::path positive_dir(positive_path);
-    fs::path negative_dir(negative_path);
+    fs::path input_file(input_path);
     fs::path output_dir(cwd);
 
-    if(!fs::exists(positive_dir)) {
-      std::cerr << "Invalid file or directory: " << positive_dir << std::endl; 
-      return 1; 
-    }
-
-    if(!fs::exists(negative_dir)) {
-      std::cerr << "Invalid file or directory: " << negative_dir << std::endl; 
+    if(!fs::is_regular_file(input_file)) {
+      std::cerr << "Invalid input file: " << input_file << std::endl; 
       return 1; 
     }
 
@@ -107,10 +99,6 @@ int main(int argc, char** argv) {
 #endif
     besra::Besra besra(minHessian); 
 
-    std::vector<fs::path> dirs;
-    dirs.push_back(positive_dir);
-    dirs.push_back(negative_dir);
-
     cv::Mat vocabulary;
 
     if(vm.count("vocab")) {
@@ -120,7 +108,7 @@ int main(int argc, char** argv) {
         fs.release();   
     } else {
         BOOST_LOG_TRIVIAL(info) << "Building vocab..";
-        vocabulary = besra.buildVocabulary(dirs, clusters, limit, threads);
+        vocabulary = besra.buildVocabulary(input_file, clusters, limit, threads);
 
         BOOST_LOG_TRIVIAL(info) << "Saving vocab to cache file: " << vocab_cache_file.string();
         cv::FileStorage vocab_fs(vocab_cache_file.string(), cv::FileStorage::WRITE);
@@ -130,7 +118,7 @@ int main(int argc, char** argv) {
 
 
     BOOST_LOG_TRIVIAL(info) << "Building stats model..";
-    cv::Ptr<CvSVM> model = besra.train(positive_dir, negative_dir, vocabulary, limit, threads);
+    cv::Ptr<CvSVM> model = besra.train(input_file, vocabulary, limit, threads);
 
     BOOST_LOG_TRIVIAL(info) << "Saving stats model to cache file: " << model_cache_file.string();
     model->save(model_cache_file.string().c_str());

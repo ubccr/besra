@@ -14,7 +14,7 @@ Requirments
 ------------------------------------------------------------------------
 
 - boost >= 1.55
-- OpenCV 2.3.x
+- OpenCV 2.4.x
 
 ------------------------------------------------------------------------
 Installation
@@ -31,11 +31,25 @@ Besra uses cmake. To compile run::
 
 If boost is compiled in a non-standard location run::
 
-  $ BOOST_ROOT=/path/to/boost cmake ..
+  $ BOOST_ROOT=/path/to/boost cmake -DBoost_NO_SYSTEM_PATHS=TRUE ..
 
-To compile with GPU support::
+If OpenCV is compiled in a non-standard location run::
+
+  $ OpenCV_DIR=/path/to/opencv cmake ..
+
+To compile besra with GPU support (requires GPU/CUDA support to be compiled in
+OpenCV)::
 
   $ cmake -DUSE_GPU=on ..
+
+To enable multi-threaded clustering, compile OpenCV with OpenMP support. For
+example::
+
+  $ unzip opencv-2.4.x.zip
+  $ cd opencv-2.4.x/
+  $ mkdir build
+  $ cd build
+  $ cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/path/to/localdir -DWITH_OPENMP=Yes ..
 
 ------------------------------------------------------------------------
 Usage

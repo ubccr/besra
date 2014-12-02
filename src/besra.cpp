@@ -94,14 +94,13 @@ namespace besra {
         return descriptors;
     }
 
-    cv::Mat Besra::buildVocabulary(std::vector<fs::path> paths, int clusterCount, int limit, int threads) {
+    cv::Mat Besra::buildVocabulary(const fs::path &input_file, int clusterCount, int limit, int threads) {
         cv::BOWKMeansTrainer bowtrainer(clusterCount);
 
-        for(std::vector<fs::path>::iterator d = paths.begin(); d != paths.end(); ++d) {
-            cv::Mat descriptors = processPath(*d, limit, threads);
-            for(int i = 0; i < descriptors.rows; i++) {
-                bowtrainer.add(descriptors.row(i));
-            }
+        std::pair<cv::Mat, cv::Mat> result = processImages(input_file, limit, threads);
+        cv::Mat descriptors = result.first;
+        for(int i = 0; i < descriptors.rows; i++) {
+            bowtrainer.add(descriptors.row(i));
         }
 
         if(bowtrainer.descripotorsCount() == 0) {
@@ -115,15 +114,16 @@ namespace besra {
         return vocabulary;
     }
 
-    cv::Mat Besra::processPath(const fs::path &path, int limit, int threads, cv::Ptr<cv::BOWImgDescriptorExtractor> bow) {
+    std::pair<cv::Mat, cv::Mat> Besra::processImages(const fs::path &path, int limit, int threads, cv::Ptr<cv::BOWImgDescriptorExtractor> bow) {
         cv::Mat descriptors;
+        cv::Mat labels;
 
         if(threads <= 0) {
             threads = 1;
         }
 
-        cv::Ptr<besra::PathQueue> queue = new besra::PathQueue();
-        besra::PathProducer pp(1, queue);
+        cv::Ptr<besra::ImageQueue> queue = new besra::ImageQueue();
+        besra::ImageProducer pp(1, queue);
         boost::thread pt(boost::ref(pp), path, limit);
 
         besra::ImageConsumer *cons[threads];
@@ -142,11 +142,13 @@ namespace besra {
             BOOST_LOG_TRIVIAL(info) << "ImageConsumer Thread " << cons[i]->id << " rows: " 
                                     << cons[i]->getDescriptors().rows;
             cv::Mat d = cons[i]->getDescriptors();
+            cv::Mat l = cons[i]->getLabels();
             descriptors.push_back(d);
+            labels.push_back(l);
             delete cons[i];
         }
 
-        return descriptors;
+        return std::make_pair(descriptors, labels);
     }
 
     cv::Ptr<cv::BOWImgDescriptorExtractor> Besra::loadBOW(const cv::Mat &vocabulary) {
@@ -155,29 +157,24 @@ namespace besra {
         return bow;
     }
 
-    cv::Ptr<CvSVM> Besra::train(const fs::path &positive, const fs::path &negative, 
-                                const cv::Mat &vocabulary, int limit, int threads) {
+    cv::Ptr<CvSVM> Besra::train(const fs::path &input_file, const cv::Mat &vocabulary, int limit, int threads) {
         cv::Ptr<cv::BOWImgDescriptorExtractor> bow = loadBOW(vocabulary);
 
         cv::Mat samples;
         cv::Mat labels;
 
-        cv::Mat pos_descriptors = processPath(positive, limit, threads, bow);
-        samples.push_back(pos_descriptors);
-        cv::Mat ones = cv::Mat::ones(pos_descriptors.rows, 1, bow->descriptorType());
-        labels.push_back(ones);
-
-        cv::Mat neg_descriptors = processPath(negative, limit, threads, bow);
-        samples.push_back(neg_descriptors);
-        cv::Mat zeros = cv::Mat::zeros(neg_descriptors.rows, 1, bow->descriptorType());
-        labels.push_back(zeros);
+        std::pair<cv::Mat, cv::Mat> result = processImages(input_file, limit, threads, bow);
+        samples = result.first;
+        labels = result.second;
 
         BOOST_LOG_TRIVIAL(info) << "Training SVM";
 
         CvSVMParams params;
         params.svm_type = CvSVM::C_SVC;
         params.kernel_type = CvSVM::LINEAR;
-        params.term_crit = cvTermCriteria(CV_TERMCRIT_ITER, 1000, FLT_EPSILON);
+        //params.svm_type = CvSVM::C_SVC;
+        //params.kernel_type = CvSVM::RBF;
+        params.term_crit = cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 1000, FLT_EPSILON);
 
         cv::Ptr<CvSVM> svm = new CvSVM();
         svm->train(samples, labels, cv::Mat(), cv::Mat(), params);
@@ -198,7 +195,7 @@ namespace besra {
         return svm;
     }
 
-    ImageConsumer::ImageConsumer(int id, cv::Ptr<PathQueue> queue) {
+    ImageConsumer::ImageConsumer(int id, cv::Ptr<ImageQueue> queue) {
         this->count = 0;
         this->id = id;
         this->queue = queue;
@@ -208,11 +205,15 @@ namespace besra {
         return descriptors;
     }
 
+    cv::Mat ImageConsumer::getLabels() {
+        return labels;
+    }
+
     void ImageConsumer::operator () (besra::Besra &besra, cv::Ptr<cv::BOWImgDescriptorExtractor> bow) {
-        fs::path path;
+        ImageRecord rec;
         while(!queue->isDone()) {
-            while(queue->pop(path)) {
-                cv::Mat img = besra.readImage(path);
+            while(queue->pop(rec)) {
+                cv::Mat img = besra.readImage(rec.path);
                 cv::Mat d;
                 if(bow == NULL) { 
                     d = besra.detectAndCompute(img);
@@ -228,14 +229,15 @@ namespace besra {
 
                 if(d.empty()) {
                     BOOST_LOG_TRIVIAL(warning) << "ImageConsumer Thread " << id 
-                                               <<  " empty descriptors for image: " << path;
+                                               <<  " empty descriptors for image: " << rec.path;
                     continue;
                 }
                 descriptors.push_back(d);
+                labels.push_back(rec.label);
             }
         }
-        while(queue->pop(path)) {
-            cv::Mat img = besra.readImage(path);
+        while(queue->pop(rec)) {
+            cv::Mat img = besra.readImage(rec.path);
             cv::Mat d;
             if(bow == NULL) { 
                 d = besra.detectAndCompute(img);
@@ -251,80 +253,99 @@ namespace besra {
 
             if(d.empty()) {
                 BOOST_LOG_TRIVIAL(warning) << "ImageConsumer Thread " << id 
-                                           <<  " empty descriptors for image: " << path;
+                                           <<  " empty descriptors for image: " << rec.path;
                 continue;
             }
 
             descriptors.push_back(d);
+            labels.push_back(rec.label);
         }
     }
 
-    PathProducer::PathProducer(int id, cv::Ptr<PathQueue> queue) {
+    ImageProducer::ImageProducer(int id, cv::Ptr<ImageQueue> queue) {
         this->id = id;
         this->queue=queue;
     }
 
-    void PathProducer::operator () (const fs::path &path, int limit) {
+    void ImageProducer::operator () (const fs::path &path, int limit) {
         int count = 0;
-        if(fs::is_directory(path)) { 
-            fs::directory_iterator end;
-            for(fs::directory_iterator iter(path) ; iter != end ; ++iter) {
-                if(!fs::is_regular_file(iter->status())) continue;
-                queue->push(iter->path());
-                count++;
-                if(limit > 0 && count >= limit) break;
-            }
-        } else if(fs::is_regular_file(path)) {
+        if(fs::is_regular_file(path)) {
             std::ifstream ifs(path.c_str());
             std::string line;
             while(std::getline(ifs, line)) {
-                fs::path img_path(line);
+                std::vector<std::string> tokens;  
+                boost::split(tokens, line, boost::is_any_of("\t,"));
+                if(tokens.size() != 2) {
+                    BOOST_LOG_TRIVIAL(error) << "ImageProducer Thread " << id 
+                                               <<  " invalid format for line: " << line;
+                    continue;
+                }
+
+                fs::path img_path(tokens[0]);
                 if(!fs::is_regular_file(img_path)) continue;
-                queue->push(img_path);
+
+                float label = 0;
+                try {
+                    label = std::stof(tokens[1]);
+                } catch ( ... ) {
+                    BOOST_LOG_TRIVIAL(error) << "ImageProducer Thread " << id 
+                                               <<  " invalid label for image file: " << img_path;
+                    continue;
+                }
+
+                ImageRecord rec(label, img_path);
+                queue->push(rec);
                 count++;
                 if(limit > 0 && count >= limit) break;
             }
         } else {
-            BOOST_LOG_TRIVIAL(warning) << "PathProducer Thread " << id 
+            BOOST_LOG_TRIVIAL(warning) << "ImageProducer Thread " << id 
                                        <<  " invalid path: " << path;
         }
     }
 
-    bool PathQueue::empty() {
+    bool ImageQueue::empty() {
         boost::mutex::scoped_lock lock(mutex);
         return queue.empty();
     }
 
-    void PathQueue::push(const fs::path &path) {
+    void ImageQueue::push(const ImageRecord &rec) {
         boost::mutex::scoped_lock lock(mutex);
-        queue.push(path);
+        queue.push(rec);
         lock.unlock();
         waitCondition.notify_one();
     }
 
-    bool PathQueue::pop(fs::path &path) {
+    bool ImageQueue::pop(ImageRecord &rec) {
         boost::mutex::scoped_lock lock(mutex);
         if(queue.empty()) {
             return false;
         }
 
-        path = queue.front();
+        rec = queue.front();
         queue.pop();
 
         return true;
     }
 
-    void PathQueue::markDone() {
+    void ImageQueue::markDone() {
         boost::mutex::scoped_lock lock(mutex);
         done = true;
     }
 
-    bool PathQueue::isDone() {
+    bool ImageQueue::isDone() {
         return done;
     }
 
-    PathQueue::PathQueue() {
+    ImageQueue::ImageQueue() {
         done = false;
+    }
+
+    ImageRecord::ImageRecord() {
+    }
+    ImageRecord::ImageRecord(float label, fs::path path) {
+        this->label = label;
+        this->path = path;
     }
 
 }

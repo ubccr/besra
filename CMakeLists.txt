@@ -3,6 +3,18 @@ if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
 
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+if(COMPILER_SUPPORTS_CXX11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+elseif(COMPILER_SUPPORTS_CXX0X)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+endif()
+
+
 #set(Boost_USE_STATIC_LIBS ON)
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
@@ -13,10 +25,22 @@ if(USE_GPU)
 endif()
 
 find_package(Boost 1.55 COMPONENTS log log_setup thread date_time filesystem system program_options REQUIRED)
-find_package(OpenCV 2.3 REQUIRED)
+find_package(OpenCV 2.4 REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${OpenCV_INCLUDE_DIR})
+
+#SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+#SET(BUILD_SHARED_LIBS OFF)
+#SET(CMAKE_EXE_LINKER_FLAGS "-static")
+
+
+#find_package(OpenMP)
+#if (OPENMP_FOUND)
+#    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+#    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+#endif()
+
 
 add_executable(besra-trainer src/besra-trainer.cpp src/besra.cpp)
 target_link_libraries( besra-trainer ${Boost_LIBRARIES} ${OpenCV_LIBS} )

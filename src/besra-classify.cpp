@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
     fs::path output_file(cwd / fs::path("besra-results.tsv"));
 
     if(!fs::exists(input_dir)) {
-      std::cerr << "Invalid input directory: " << input_dir << std::endl; 
+      std::cerr << "Invalid input file/directory: " << input_dir << std::endl; 
       return 1; 
     }
 
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
             try{
                 float res = besra.classify(filepath, bow, model);
                 BOOST_LOG_TRIVIAL(info) << "Class: " << res << " Image: " << filepath;
-                fout << res << "\t" << filepath << std::endl;
+                fout << filepath << "\t" << res << std::endl;
                 count++;
             } catch(cv::Exception& e) { 
                 const char* err_msg = e.what();
@@ -137,15 +137,21 @@ int main(int argc, char** argv) {
         std::ifstream ifs(input_dir.c_str());
         std::string line;
         while(std::getline(ifs, line)) {
-            fs::path img_path(line);
-            if(!fs::is_regular_file(img_path)) continue;
+            std::vector<std::string> tokens;  
+            boost::split(tokens, line, boost::is_any_of("\t,"));
+            if(tokens.size() == 0) {
+                continue;
+            }
 
+
+            fs::path img_path(tokens[0]);
+            if(!fs::is_regular_file(img_path)) continue;
             std::string filepath = img_path.string();
 
             try{
                 float res = besra.classify(filepath, bow, model);
                 BOOST_LOG_TRIVIAL(info) << "Class: " << res << " Image: " << filepath;
-                fout << res << "\t" << filepath << std::endl;
+                fout << filepath << "\t" << res << std::endl;
                 count++;
             } catch(cv::Exception& e) { 
                 const char* err_msg = e.what();
