@@ -40,12 +40,15 @@
 #ifdef USE_GPU
 #include <opencv2/gpu/gpu.hpp>
 #endif
+#ifdef OPENMP_FOUND
+#include <omp.h>
+#endif
 
 namespace fs = boost::filesystem;
 
 namespace besra {
 
-    void init_log();
+    void init_log(bool verbose=false);
 
     class Besra {
         private:
@@ -56,7 +59,10 @@ namespace besra {
             cv::Ptr<cv::gpu::SURF_GPU> gpu_surf;
 #endif
 
-            std::pair<cv::Mat, cv::Mat> processImages(const fs::path &file, int limit = 0, int threads = 0, 
+            bool processLine(std::string line, cv::Mat &descriptors, float &label,
+                              cv::Ptr<cv::BOWImgDescriptorExtractor> bow);
+
+            std::pair<cv::Mat, cv::Mat> processImages(const fs::path &file, int threads = 0, 
                                                       cv::Ptr<cv::BOWImgDescriptorExtractor> bow = NULL);
 
         public:
@@ -68,60 +74,13 @@ namespace besra {
             cv::Mat detectAndCompute(const cv::Mat &img);
             cv::Mat detectAndCompute(const cv::Mat &img, cv::Ptr<cv::BOWImgDescriptorExtractor> bow);
 
-            cv::Mat buildVocabulary(const fs::path &input_file, int clusterCount = 150, int limit = 0, int threads = 0);
+            cv::Mat buildVocabulary(const fs::path &input_file, int clusterCount = 150, int threads = 0);
             cv::Ptr<cv::BOWImgDescriptorExtractor> loadBOW(const cv::Mat &vocabulary);
-            cv::Ptr<CvSVM> train(const fs::path &input_file, const cv::Mat &vocabulary, int limit = 0, int threads = 0);
+            cv::Ptr<CvSVM> train(const fs::path &input_file, const cv::Mat &vocabulary, int threads = 0);
             cv::Ptr<CvSVM> loadStatModel(const fs::path &cache, const cv::Mat &vocabulary);
             float classify(const fs::path &path, cv::Ptr<cv::BOWImgDescriptorExtractor> bow, cv::Ptr<CvSVM> model);
     };
 
-    class ImageRecord {
-        public:
-            float label;
-            fs::path path;
-            ImageRecord();
-            ImageRecord(float label, fs::path path);
-    };
-
-    class ImageQueue {
-        private:
-            std::queue<ImageRecord> queue;
-            mutable boost::mutex mutex;
-            boost::condition_variable waitCondition;
-            bool done;
-        public:
-            ImageQueue();
-            void markDone();
-            bool isDone();
-            bool empty();
-            void push(const ImageRecord &rec);
-            bool pop(ImageRecord &rec);
-    };
-
-    class ImageConsumer {
-        private:
-            int count;
-            cv::Ptr<ImageQueue> queue;
-            cv::Mat descriptors;
-            cv::Mat labels;
-
-        public:
-            int id;
-            ImageConsumer(int id, cv::Ptr<ImageQueue> queue);
-            void operator () (besra::Besra &besra, cv::Ptr<cv::BOWImgDescriptorExtractor> bow = NULL);
-            cv::Mat getDescriptors();
-            cv::Mat getLabels();
-    };
-
-    class ImageProducer {
-        private:
-            cv::Ptr<ImageQueue> queue;
-
-        public:
-            int id;
-            ImageProducer(int id, cv::Ptr<ImageQueue> queue);
-            void operator () (const fs::path &path, int limit);
-    };
 }
 
 #endif

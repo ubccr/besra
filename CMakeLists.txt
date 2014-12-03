@@ -14,6 +14,12 @@ else()
         message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    add_definitions(-DOPENMP_FOUND)
+endif()
 
 #set(Boost_USE_STATIC_LIBS ON)
 add_definitions(-DBOOST_LOG_DYN_LINK)
@@ -33,14 +39,6 @@ include_directories(${OpenCV_INCLUDE_DIR})
 #SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 #SET(BUILD_SHARED_LIBS OFF)
 #SET(CMAKE_EXE_LINKER_FLAGS "-static")
-
-
-#find_package(OpenMP)
-#if (OPENMP_FOUND)
-#    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-#    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-#endif()
-
 
 add_executable(besra-trainer src/besra-trainer.cpp src/besra.cpp)
 target_link_libraries( besra-trainer ${Boost_LIBRARIES} ${OpenCV_LIBS} )

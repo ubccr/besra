@@ -23,13 +23,12 @@
 namespace po = boost::program_options;
 
 int main(int argc, char** argv) {
-    besra::init_log();
 
     fs::path cwd = fs::initial_path();
     int clusters;
-    int limit;
     int threads;
     int minHessian;
+    bool verbose;
     std::string input_path;
     std::string output_path;
 
@@ -38,11 +37,11 @@ int main(int argc, char** argv) {
         ("help,h", "help message")
         ("input,i", po::value<std::string>(&input_path)->required(), "path to input file")
         ("output,o", po::value<std::string>(), "path to output directory")
-        ("limit,l", po::value<int>(&limit)->default_value(0), "max number of images to process (0 = unlimited)")
-        ("threads,t", po::value<int>(&threads)->default_value(0), "number of threads to spawn")
+        ("threads,t", po::value<int>(&threads)->default_value(1), "number of threads to spawn")
         ("clusters,c", po::value<int>(&clusters)->default_value(150), "clusters")
         ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
-        ("vocab,v", po::value<std::string>(), "path to vocabulary cache file")
+        ("vocab,b", po::value<std::string>(), "path to vocabulary cache file")
+        ("verbose,v", po::bool_switch(&verbose)->default_value(false), "verbose output")
     ;
 
     po::variables_map vm;
@@ -60,6 +59,8 @@ int main(int argc, char** argv) {
       std::cerr << desc << std::endl; 
       return 1; 
     } 
+
+    besra::init_log(verbose);
 
     fs::path input_file(input_path);
     fs::path output_dir(cwd);
@@ -108,7 +109,7 @@ int main(int argc, char** argv) {
         fs.release();   
     } else {
         BOOST_LOG_TRIVIAL(info) << "Building vocab..";
-        vocabulary = besra.buildVocabulary(input_file, clusters, limit, threads);
+        vocabulary = besra.buildVocabulary(input_file, clusters, threads);
 
         BOOST_LOG_TRIVIAL(info) << "Saving vocab to cache file: " << vocab_cache_file.string();
         cv::FileStorage vocab_fs(vocab_cache_file.string(), cv::FileStorage::WRITE);
@@ -118,7 +119,7 @@ int main(int argc, char** argv) {
 
 
     BOOST_LOG_TRIVIAL(info) << "Building stats model..";
-    cv::Ptr<CvSVM> model = besra.train(input_file, vocabulary, limit, threads);
+    cv::Ptr<CvSVM> model = besra.train(input_file, vocabulary, threads);
 
     BOOST_LOG_TRIVIAL(info) << "Saving stats model to cache file: " << model_cache_file.string();
     model->save(model_cache_file.string().c_str());

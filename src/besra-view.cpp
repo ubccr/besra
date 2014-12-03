@@ -27,12 +27,14 @@ int main(int argc, char** argv) {
     besra::init_log();
 
     std::string img_path;
+    std::string detector_str;
     int minHessian;
     po::options_description desc("Options");
     desc.add_options()
         ("help,h", "help message")
         ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("image,i", po::value<std::string>(&img_path)->required(), "path to image file")
+        ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector")
     ;
 
     po::variables_map vm;
@@ -72,7 +74,12 @@ int main(int argc, char** argv) {
     besra::Besra besra(minHessian); 
 
     cv::Mat img = besra.readImage(img_file);
-    std::vector<cv::KeyPoint> keypoints = besra.detectKeypoints(img);
+    std::vector<cv::KeyPoint> keypoints;
+
+    cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(detector_str);
+    //cv::Ptr<cv::FeatureDetector> detector = new cv::ORB(10);
+    //cv::Ptr<cv::FeatureDetector> detector = new cv::BRISK(20, 0, 1.0f);
+    detector->detect(img, keypoints);
 
     cv::Mat img_keypoints;
       
