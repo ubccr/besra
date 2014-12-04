@@ -21,11 +21,17 @@ if (OPENMP_FOUND)
     add_definitions(-DOPENMP_FOUND)
 endif()
 
-#set(Boost_USE_STATIC_LIBS ON)
-add_definitions(-DBOOST_LOG_DYN_LINK)
+option(STATIC_BUILD "Build static binary" OFF)
+if(STATIC_BUILD)
+    set(Boost_USE_STATIC_LIBS ON)
+    SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    SET(BUILD_SHARED_LIBS OFF)
+    SET(CMAKE_EXE_LINKER_FLAGS "-static")
+else()
+    add_definitions(-DBOOST_LOG_DYN_LINK)
+endif()
 
 option(USE_GPU "Compile to use GPUs" OFF)
-
 if(USE_GPU)
     add_definitions(-DUSE_GPU)
 endif()
@@ -35,10 +41,6 @@ find_package(OpenCV 2.4 REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${OpenCV_INCLUDE_DIR})
-
-#SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-#SET(BUILD_SHARED_LIBS OFF)
-#SET(CMAKE_EXE_LINKER_FLAGS "-static")
 
 add_executable(besra-trainer src/besra-trainer.cpp src/besra.cpp)
 target_link_libraries( besra-trainer ${Boost_LIBRARIES} ${OpenCV_LIBS} )
