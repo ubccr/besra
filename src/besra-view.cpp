@@ -71,15 +71,10 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    besra::Besra besra(minHessian); 
+    besra::Besra besra(minHessian, "BruteForce", "SURF", detector_str); 
 
     cv::Mat img = besra.readImage(img_file);
-    std::vector<cv::KeyPoint> keypoints;
-
-    cv::Ptr<cv::FeatureDetector> detector = cv::FeatureDetector::create(detector_str);
-    //cv::Ptr<cv::FeatureDetector> detector = new cv::ORB(10);
-    //cv::Ptr<cv::FeatureDetector> detector = new cv::BRISK(20, 0, 1.0f);
-    detector->detect(img, keypoints);
+    std::vector<cv::KeyPoint> keypoints = besra.detectKeypoints(img);
 
     cv::Mat img_keypoints;
       
