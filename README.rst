@@ -6,15 +6,14 @@ Besra - image classification for protein crystallization experiments
 About
 ------------------------------------------------------------------------
 
-Besra is a tool for auto-classifying protein crystallization experiments. The
-classifier is currently binary (crystal/no-crystal).
+Besra is a tool for auto-classifying protein crystallization experiments.
 
 ------------------------------------------------------------------------
 Requirments
 ------------------------------------------------------------------------
 
-- boost >= 1.55
-- OpenCV 2.4.x
+- boost >= 1.57
+- OpenCV >= 2.4.9
 
 ------------------------------------------------------------------------
 Installation
