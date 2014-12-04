@@ -42,6 +42,10 @@ OpenCV)::
 
   $ cmake -DUSE_GPU=on ..
 
+------------------------------------------------------------------------
+Compiling OpenCV
+------------------------------------------------------------------------
+
 To enable multi-threaded clustering, compile OpenCV with OpenMP support. For
 example::
 
