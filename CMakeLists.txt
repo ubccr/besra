@@ -48,5 +48,7 @@ target_link_libraries( besra-trainer ${Boost_LIBRARIES} ${OpenCV_LIBS} )
 add_executable(besra-classify src/besra-classify.cpp src/besra.cpp)
 target_link_libraries( besra-classify ${Boost_LIBRARIES} ${OpenCV_LIBS} )
 
+if(NOT STATIC_BUILD)
 add_executable(besra-view src/besra-view.cpp src/besra.cpp)
 target_link_libraries( besra-view ${Boost_LIBRARIES} ${OpenCV_LIBS} )
+endif()
