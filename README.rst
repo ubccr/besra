@@ -55,6 +55,7 @@ Requirements
 
 - `boost <http://www.boost.org/>`_ >= 1.57
 - `OpenCV <http://opencv.org/>`_ >= 2.4.9
+- `CMake <http://www.cmake.org/>`_ >= 1.8
 
 -------------------------------------------------------------------------------
 Installation
