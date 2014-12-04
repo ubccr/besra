@@ -2,22 +2,63 @@
 Besra - image classification for protein crystallization experiments
 ===============================================================================
 
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 About
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
-Besra is a tool for auto-classifying protein crystallization experiments.
+Besra is a tool for auto-classifying protein crystallization experiments. Source
+and binary releases are available on `GitHub <https://github.com/ubccr/besra/releases>`_.
 
-------------------------------------------------------------------------
-Requirments
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+Quickstart
+-------------------------------------------------------------------------------
 
-- boost >= 1.57
-- OpenCV >= 2.4.9
+First need to train on a set of images. besra-trainer requires a <TAB> separated
+input file of image paths and class labels. For example, an input file with
+crystal = 1 and no-crystal = 0 looks like this::
 
-------------------------------------------------------------------------
+  /images/png/X0000051270868200506241635.png    1
+  /images/png/X0000049750501200505270943.png    1
+  /images/png/X0000049151305200506061345.png    1
+  /images/png/X0000050511419200507041505.png    0
+  /images/png/X0000051830553200507012227.png    0
+  /images/png/X0000050611108200507051159.png    0
+  ...
+
+The path should be the full path to the image on the filesystem and the class
+label needs to be a float. The input file needs to have at last 2 distinct class
+labels. To train a set of images run::
+
+  $ besra-trainer -i input.tsv -v
+
+For the full set of options see::
+
+  $ besra-trainer --help
+
+This command will output 2 files: stats-model.xml and bow-vocab.yml which can
+later be used to classify images (without having to re-train each time).
+
+To classify a directory of images::
+
+  $ besra-classify -i /path/to/images -m stats-model.xml -b bow-vocab.yml -v
+
+To classify images using an input file (must be one image path per line,
+similiar to the input for besra-trainer)::
+
+  $ besra-classify -i input.tsv -m stats-model.xml -b bow-vocab.yml -v
+
+Results are written to a file named: besra-results.tsv
+
+-------------------------------------------------------------------------------
+Requirements
+-------------------------------------------------------------------------------
+
+- `boost <http://www.boost.org/>`_ >= 1.57
+- `OpenCV <http://opencv.org/>`_ >= 2.4.9
+
+-------------------------------------------------------------------------------
 Installation
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 Besra uses cmake. To compile run::
 
@@ -41,9 +82,9 @@ OpenCV)::
 
   $ cmake -DUSE_GPU=on ..
 
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Compiling OpenCV
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 To enable multi-threaded clustering, compile OpenCV with OpenMP support. For
 example::
@@ -52,27 +93,12 @@ example::
   $ cd opencv-2.4.x/
   $ mkdir build
   $ cd build
-  $ cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/path/to/localdir -DWITH_OPENMP=Yes ..
+  $ cmake -D CMAKE_BUILD_TYPE=RELEASE \
+    -D CMAKE_INSTALL_PREFIX=/path/to/localdir -DWITH_OPENMP=Yes ..
 
-------------------------------------------------------------------------
-Usage
-------------------------------------------------------------------------
-
-First need to train on a set of positive/negative images::
-
-  $ besra-trainer -p /path/to/crystal -n /path/to/nocrystal
-
-This creates 2 files: stats-model.xml and bow-vocab.yml
-
-To classify a directory of images::
-
-  $ besra-classify -i /path/to/images -m stats-model.xml -v bow-vocab.yml
-
-Results are written to a file named: besra-results.tsv
-
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 License
-------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 Copyright (C) 2014 Andrew E. Bruno
 
