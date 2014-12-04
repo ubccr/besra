@@ -43,11 +43,16 @@ namespace besra {
 
     }
 
-    Besra::Besra(int minHessian) {
-        matcher = cv::DescriptorMatcher::create("BruteForce");
-        //matcher = new cv::FlannBasedMatcher();
-        extractor = new cv::SurfDescriptorExtractor();
-        detector = new cv::SurfFeatureDetector(minHessian);
+    Besra::Besra(int minHessian, std::string matcher, std::string extractor, std::string detector) {
+        this->matcher = cv::DescriptorMatcher::create(matcher);
+        this->extractor = cv::DescriptorExtractor::create(extractor);
+        this->detector = cv::FeatureDetector::create(detector);
+        if(extractor == "SURF") {
+            this->extractor->set("hessianThreshold", minHessian);
+        }
+        if(detector == "SURF") {
+            this->detector->set("hessianThreshold", minHessian);
+        }
 #ifdef USE_GPU
         gpu_surf = new cv::gpu::SURF_GPU(minHessian);
 #endif

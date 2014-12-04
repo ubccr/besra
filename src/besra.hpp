@@ -66,7 +66,7 @@ namespace besra {
                                                       cv::Ptr<cv::BOWImgDescriptorExtractor> bow = NULL);
 
         public:
-            Besra(int minHessian = 600);
+            Besra(int minHessian = 600, std::string matcher="BruteForce", std::string extractor="SURF", std::string detector="SURF");
 
             cv::Mat readImage(const fs::path &file);
 
