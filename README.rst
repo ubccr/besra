@@ -26,7 +26,7 @@ crystal = 1 and no-crystal = 0 looks like this::
   ...
 
 The path should be the full path to the image on the filesystem and the class
-label needs to be a float. The input file needs to have at last 2 distinct class
+label should be a float. The input file requires at last 2 distinct class
 labels. To train a set of images run::
 
   $ besra-trainer -i input.tsv -v
