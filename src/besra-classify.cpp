@@ -141,6 +141,9 @@ int main(int argc, char** argv) {
     } else if(fs::is_regular_file(input_dir)) {
 
 #ifdef OPENMP_FOUND
+        if(threads > limit) {
+            threads = limit;
+        }
         omp_set_num_threads(threads);
 #endif
 
