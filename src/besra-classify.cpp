@@ -181,6 +181,8 @@ int main(int argc, char** argv) {
                 } catch(cv::Exception& e) { 
                     const char* err_msg = e.what();
                     BOOST_LOG_TRIVIAL(error) << "Failed to classify image: " << filepath << " error: " << err_msg;
+                } catch( ... ) { 
+                    BOOST_LOG_TRIVIAL(error) << "Fatal error classifing image: " << filepath;
                 }
 
                 if(tcount % 100 == 0) {
