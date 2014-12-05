@@ -15,9 +15,9 @@ crystallization experiments. Accuracy equal or better to that of a human would
 be considered a success. Current methods take upwards of ~10 hours to classify
 1536 images. Speeding up the classification will allow better integration into
 existing expert knowledge systems/pipelines and enable robust evaluation and
-tuning of classification algorithms across millions of images. Future versions
-will be extended from binary classification to n-way classification (clear,
-precipitate, skin, phase separation). 
+tuning of classification algorithms across millions of images. Extending from
+binary classification to n-way classification (clear, precipitate, skin, phase
+separation) is supported however performance has not been extensivley tested.
 
 -------------------------------------------------------------------------------
 Quickstart
