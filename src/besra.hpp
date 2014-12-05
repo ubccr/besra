@@ -30,8 +30,6 @@
 #include <boost/log/trivial.hpp>
 #include <boost/log/utility/setup.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/atomic.hpp>
-#include <boost/thread/thread.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/ml/ml.hpp>
 #include <opencv2/features2d/features2d.hpp>
