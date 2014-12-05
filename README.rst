@@ -151,7 +151,8 @@ To compile boost::
   $ tar xvf boost-1.xx.x.tar.gz
   $ cd boost_1_xx_x
   $ ./bootstrap.sh --prefix=/path/to/localdir \
-       --with-libraries=log,,thread,date_time,filesystem,system,program_options
+       --with-libraries=log,thread,date_time,filesystem,system,program_options
+  $ ./b2 install
 
 For more info see `boost docs <http://www.boost.org/doc/libs/1_57_0/more/getting_started/unix-variants.html>`_.
 
