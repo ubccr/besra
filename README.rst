@@ -26,7 +26,7 @@ crystal = 1 and no-crystal = 0 looks like this::
   ...
 
 The path should be the full path to the image on the filesystem and the class
-label should be a float. The input file requires at last 2 distinct class
+label should be a float. The input file requires at least 2 distinct class
 labels. To train a set of images run::
 
   $ besra-trainer -i input.tsv -v
@@ -96,6 +96,21 @@ example::
   $ cd build
   $ cmake -D CMAKE_BUILD_TYPE=RELEASE \
     -D CMAKE_INSTALL_PREFIX=/path/to/localdir -DWITH_OPENMP=Yes ..
+
+For more info see `OpenCV docs <http://docs.opencv.org/trunk/doc/tutorials/introduction/linux_install/linux_install.html>`_.
+
+-------------------------------------------------------------------------------
+Compiling Boost
+-------------------------------------------------------------------------------
+
+To compile boost::
+
+  $ tar xvf boost-1.xx.x.tar.gz
+  $ cd boost_1_xx_x
+  $ ./bootstrap.sh --prefix=/path/to/localdir \
+       --with-libraries=log,,thread,date_time,filesystem,system,program_options
+
+For more info see `boost docs <http://www.boost.org/doc/libs/1_57_0/more/getting_started/unix-variants.html>`_.
 
 -------------------------------------------------------------------------------
 License
