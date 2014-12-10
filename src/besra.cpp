@@ -45,18 +45,15 @@ namespace besra {
 
     Besra::Besra(int minHessian, std::string matcher, std::string detector) {
         this->matcher = cv::DescriptorMatcher::create(matcher);
-        this->extractor = new cv::SurfDescriptorExtractor(minHessian);
-        this->detector = cv::FeatureDetector::create(detector);
-        if(detector == "SURF") {
-            this->detector->set("hessianThreshold", minHessian);
-        }
+        this->extractor = cv::xfeatures2d::SURF::create(minHessian);
+        this->detector = cv::xfeatures2d::SURF::create(minHessian);
 #ifdef USE_GPU
         gpu_surf = new cv::gpu::SURF_GPU(minHessian);
 #endif
     }
 
     cv::Mat Besra::readImage(const fs::path &file) {
-        return cv::imread(file.string(), CV_LOAD_IMAGE_GRAYSCALE);
+        return cv::imread(file.string(), cv::IMREAD_GRAYSCALE);
     }
 
     std::vector<cv::KeyPoint> Besra::detectKeypoints(const cv::Mat &img) {
@@ -112,7 +109,7 @@ namespace besra {
             bowtrainer.add(descriptors.row(i));
         }
 
-        if(bowtrainer.descripotorsCount() == 0) {
+        if(bowtrainer.descriptorsCount() == 0) {
             //TODO: throw exception or bail here
             BOOST_LOG_TRIVIAL(error) << "<buildVocabulary> No descriptors found! Can't perform clustering..";
         }
@@ -123,7 +120,7 @@ namespace besra {
         return vocabulary;
     }
 
-    bool Besra::processLine(std::string line, cv::Mat &descriptors, float &label,
+    bool Besra::processLine(std::string line, cv::Mat &descriptors, int &label,
                             cv::Ptr<cv::BOWImgDescriptorExtractor> bow) {
         std::vector<std::string> tokens;  
         boost::split(tokens, line, boost::is_any_of("\t,"));
@@ -137,7 +134,7 @@ namespace besra {
 
         label = 0;
         try {
-            label = std::stof(tokens[1]);
+            label = std::stoi(tokens[1]);
         } catch ( ... ) {
             BOOST_LOG_TRIVIAL(error) <<  "Invalid label for image file: " << img_path;
             return false;
@@ -187,7 +184,7 @@ namespace besra {
 
 
                 cv::Mat d;
-                float label;
+                int label;
                 if(processLine(line, d, label, bow)) {
                     tcount++;
                     #pragma omp critical
@@ -212,12 +209,12 @@ namespace besra {
     }
 
     cv::Ptr<cv::BOWImgDescriptorExtractor> Besra::loadBOW(const cv::Mat &vocabulary) {
-        cv::Ptr<cv::BOWImgDescriptorExtractor> bow = new cv::BOWImgDescriptorExtractor(extractor, matcher);
+        cv::Ptr<cv::BOWImgDescriptorExtractor> bow = cv::makePtr<cv::BOWImgDescriptorExtractor>(extractor, matcher);
         bow->setVocabulary(vocabulary);
         return bow;
     }
 
-    cv::Ptr<CvSVM> Besra::train(const fs::path &input_file, const cv::Mat &vocabulary, int threads) {
+    cv::Ptr<cv::ml::StatModel> Besra::train(const fs::path &input_file, const cv::Mat &vocabulary, int threads) {
         cv::Ptr<cv::BOWImgDescriptorExtractor> bow = loadBOW(vocabulary);
 
         cv::Mat samples;
@@ -229,30 +226,23 @@ namespace besra {
 
         BOOST_LOG_TRIVIAL(info) << "Training SVM";
 
-        CvSVMParams params;
-        params.svm_type = CvSVM::C_SVC;
-        params.kernel_type = CvSVM::LINEAR;
-        //params.svm_type = CvSVM::C_SVC;
-        //params.kernel_type = CvSVM::RBF;
-        params.term_crit = cvTermCriteria(CV_TERMCRIT_ITER+CV_TERMCRIT_EPS, 1000, FLT_EPSILON);
+        cv::ml::SVM::Params params;
+        params.svmType = cv::ml::SVM::C_SVC;
+        params.kernelType = cv::ml::SVM::LINEAR;
+        params.termCrit = cv::TermCriteria(cv::TermCriteria::MAX_ITER+cv::TermCriteria::EPS, 1000, FLT_EPSILON);
 
-        cv::Ptr<CvSVM> svm = new CvSVM();
-        svm->train(samples, labels, cv::Mat(), cv::Mat(), params);
-
-        return svm;
+        return cv::ml::StatModel::train<cv::ml::SVM>(samples, cv::ml::ROW_SAMPLE, labels, params);
     }
 
-    float Besra::classify(const fs::path &path, cv::Ptr<cv::BOWImgDescriptorExtractor> bow, cv::Ptr<CvSVM> model) {
+    float Besra::classify(const fs::path &path, cv::Ptr<cv::BOWImgDescriptorExtractor> bow, cv::Ptr<cv::ml::StatModel> model) {
         cv::Mat img = readImage(path);
         cv::Mat features = detectAndCompute(img, bow);
         float res = model->predict(features);
         return res;
     }
 
-    cv::Ptr<CvSVM> Besra::loadStatModel(const fs::path &cache, const cv::Mat &vocabulary) {
-        cv::Ptr<CvSVM> svm = new CvSVM();
-        svm->load(cache.string().c_str());
-        return svm;
+    cv::Ptr<cv::ml::StatModel> Besra::loadStatModel(const fs::path &cache, const cv::Mat &vocabulary) {
+        return cv::ml::StatModel::load<cv::ml::SVM>(cache.string());
     }
 
 }

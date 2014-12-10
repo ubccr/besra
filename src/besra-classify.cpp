@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
 
     BOOST_LOG_TRIVIAL(info) << "Loading stats model from file: " << model_cache_file.string();
 
-    cv::Ptr<CvSVM> model = besra.loadStatModel(model_cache_file, vocabulary);
+    cv::Ptr<cv::ml::StatModel> model = besra.loadStatModel(model_cache_file, vocabulary);
 
     BOOST_LOG_TRIVIAL(info) << "Classifying data..";
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 1.8)
+cmake_minimum_required(VERSION 2.8)
 if(COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
 endif(COMMAND cmake_policy)
@@ -37,10 +37,10 @@ if(USE_GPU)
 endif()
 
 find_package(Boost 1.55 COMPONENTS log log_setup thread date_time filesystem system program_options REQUIRED)
-find_package(OpenCV 2.4 REQUIRED)
+find_package(OpenCV REQUIRED)
 
-include_directories(${Boost_INCLUDE_DIR})
-include_directories(${OpenCV_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_executable(besra-trainer src/besra-trainer.cpp src/besra.cpp)
 target_link_libraries( besra-trainer ${Boost_LIBRARIES} ${OpenCV_LIBS} )

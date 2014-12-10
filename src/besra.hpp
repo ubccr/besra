@@ -33,7 +33,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/ml/ml.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include <opencv2/nonfree/nonfree.hpp>
+#include <opencv2/xfeatures2d/nonfree.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #ifdef USE_GPU
 #include <opencv2/gpu/gpu.hpp>
@@ -57,11 +57,11 @@ namespace besra {
             cv::Ptr<cv::gpu::SURF_GPU> gpu_surf;
 #endif
 
-            bool processLine(std::string line, cv::Mat &descriptors, float &label,
+            bool processLine(std::string line, cv::Mat &descriptors, int &label,
                               cv::Ptr<cv::BOWImgDescriptorExtractor> bow);
 
             std::pair<cv::Mat, cv::Mat> processImages(const fs::path &file, int threads = 0, 
-                                                      cv::Ptr<cv::BOWImgDescriptorExtractor> bow = NULL);
+                                                      cv::Ptr<cv::BOWImgDescriptorExtractor> bow = cv::Ptr<cv::BOWImgDescriptorExtractor>());
 
         public:
             Besra(int minHessian = 600, std::string matcher="BruteForce", std::string detector="SURF");
@@ -74,9 +74,9 @@ namespace besra {
 
             cv::Mat buildVocabulary(const fs::path &input_file, int clusterCount = 150, int threads = 0);
             cv::Ptr<cv::BOWImgDescriptorExtractor> loadBOW(const cv::Mat &vocabulary);
-            cv::Ptr<CvSVM> train(const fs::path &input_file, const cv::Mat &vocabulary, int threads = 0);
-            cv::Ptr<CvSVM> loadStatModel(const fs::path &cache, const cv::Mat &vocabulary);
-            float classify(const fs::path &path, cv::Ptr<cv::BOWImgDescriptorExtractor> bow, cv::Ptr<CvSVM> model);
+            cv::Ptr<cv::ml::StatModel> train(const fs::path &input_file, const cv::Mat &vocabulary, int threads = 0);
+            cv::Ptr<cv::ml::StatModel> loadStatModel(const fs::path &cache, const cv::Mat &vocabulary);
+            float classify(const fs::path &path, cv::Ptr<cv::BOWImgDescriptorExtractor> bow, cv::Ptr<cv::ml::StatModel> model);
     };
 
 }

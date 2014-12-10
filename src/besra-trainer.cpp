@@ -119,10 +119,10 @@ int main(int argc, char** argv) {
 
 
     BOOST_LOG_TRIVIAL(info) << "Building stats model..";
-    cv::Ptr<CvSVM> model = besra.train(input_file, vocabulary, threads);
+    cv::Ptr<cv::ml::StatModel> model = besra.train(input_file, vocabulary, threads);
 
     BOOST_LOG_TRIVIAL(info) << "Saving stats model to cache file: " << model_cache_file.string();
-    model->save(model_cache_file.string().c_str());
+    model->save(model_cache_file.string());
 
     BOOST_LOG_TRIVIAL(info) << "Done!";
 
