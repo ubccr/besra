@@ -43,10 +43,59 @@ namespace besra {
 
     }
 
-    Besra::Besra(int minHessian, std::string matcher, std::string detector) {
-        this->matcher = cv::DescriptorMatcher::create(matcher);
-        this->extractor = cv::xfeatures2d::SURF::create(minHessian);
-        this->detector = cv::xfeatures2d::SURF::create(minHessian);
+    Besra::Besra(int minHessian, std::string extractor, std::string detector) {
+        if(extractor == "SURF") {
+            this->extractor = cv::xfeatures2d::SURF::create();
+        } else if(extractor == "FREAK") {
+            this->extractor = cv::xfeatures2d::FREAK::create();
+        } else if(extractor == "BRISK") {
+            this->extractor = cv::BRISK::create();
+        } else if(extractor == "ORB") {
+            this->extractor = cv::ORB::create();
+        } else if(extractor == "KAZE") {
+            this->extractor = cv::KAZE::create();
+        } else if(extractor == "AKAZE") {
+            this->extractor = cv::AKAZE::create();
+        } else if(extractor == "BRIEF") {
+            this->extractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
+        } else if(extractor == "SIFT") {
+            this->extractor = cv::xfeatures2d::SIFT::create();
+        }
+
+        if(detector == "SURF") {
+            this->detector = cv::xfeatures2d::SURF::create();
+        } else if(detector == "BRISK") {
+            this->detector = cv::BRISK::create();
+        } else if(detector == "ORB") {
+            this->detector = cv::ORB::create();
+        } else if(detector == "KAZE") {
+            this->detector = cv::KAZE::create();
+        } else if(detector == "AKAZE") {
+            this->detector = cv::AKAZE::create();
+        } else if(detector == "MSER") {
+            this->detector = cv::MSER::create();
+        } else if(detector == "SIFT") {
+            this->detector = cv::xfeatures2d::SIFT::create();
+        } else if(detector == "FAST") {
+            this->detector = cv::FastFeatureDetector::create();
+        } else if(detector == "GFTT") {
+            this->detector = cv::GFTTDetector::create();
+        } else if(detector == "BLOB") {
+            this->detector = cv::SimpleBlobDetector::create();
+        }
+
+        if(this->detector != NULL) {
+            BOOST_LOG_TRIVIAL(info) << "Detector has descriptor type: " << this->detector->descriptorType();
+            if(this->detector->descriptorType() == CV_32F) {
+                BOOST_LOG_TRIVIAL(info) << "Float descriptor. Using BruteForce matcher";
+                this->matcher = cv::DescriptorMatcher::create("BruteForce");
+            } else {
+                // assume binary?
+                BOOST_LOG_TRIVIAL(info) << "Binary descriptor. Using BruteForce-Hamming matcher";
+                this->matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
+            }
+        }
+
 #ifdef USE_GPU
         gpu_surf = new cv::gpu::SURF_GPU(minHessian);
 #endif
@@ -105,6 +154,12 @@ namespace besra {
 
         std::pair<cv::Mat, cv::Mat> result = processImages(input_file, threads);
         cv::Mat descriptors = result.first;
+
+        int type = descriptors.type();
+        if(type != CV_32F) {
+            descriptors.convertTo(descriptors, CV_32F);
+        }
+
         for(int i = 0; i < descriptors.rows; i++) {
             bowtrainer.add(descriptors.row(i));
         }
@@ -116,6 +171,10 @@ namespace besra {
         
         BOOST_LOG_TRIVIAL(info) << "<buildVocabulary> Clustering.." << bowtrainer.getDescriptors().size();
         cv::Mat vocabulary = bowtrainer.cluster();
+
+        if(type != CV_32F) {
+            vocabulary.convertTo(vocabulary, type);
+        }
 
         return vocabulary;
     }
@@ -222,9 +281,13 @@ namespace besra {
 
         std::pair<cv::Mat, cv::Mat> result = processImages(input_file, threads, bow);
         samples = result.first;
+        if(samples.type() != CV_32F) {
+            samples.convertTo(samples, CV_32F);
+        }
+
         labels = result.second;
 
-        BOOST_LOG_TRIVIAL(info) << "Training SVM";
+        BOOST_LOG_TRIVIAL(info) << "Training StatsModel";
 
         cv::ml::SVM::Params params;
         params.svmType = cv::ml::SVM::C_SVC;

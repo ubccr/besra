@@ -31,6 +31,8 @@ int main(int argc, char** argv) {
     bool verbose;
     std::string input_path;
     std::string output_path;
+    std::string detector_str;
+    std::string extractor_str;
 
     po::options_description desc("Options");
     desc.add_options()
@@ -42,6 +44,8 @@ int main(int argc, char** argv) {
         ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("vocab,b", po::value<std::string>(), "path to vocabulary cache file")
         ("verbose,v", po::bool_switch(&verbose)->default_value(false), "verbose output")
+        ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector")
+        ("extractor,e", po::value<std::string>(&extractor_str)->default_value("SURF"), "descriptor extractor")
     ;
 
     po::variables_map vm;
@@ -78,7 +82,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    fs::path model_cache_file(output_dir / fs::path("stats-model.xml"));
+    fs::path model_cache_file(output_dir / fs::path("stats-model.yml"));
     fs::path vocab_cache_file(output_dir / fs::path("bow-vocab.yml"));
     if(vm.count("vocab")) {
         vocab_cache_file = fs::path(vm["vocab"].as<std::string>());
@@ -98,7 +102,16 @@ int main(int argc, char** argv) {
         return 1; 
     }
 #endif
-    besra::Besra besra(minHessian); 
+    besra::Besra besra(minHessian, extractor_str, detector_str); 
+    if(besra.extractor == NULL) {
+        std::cerr << "Invalid extractor: " << extractor_str << std::endl; 
+        return 1; 
+    }
+    if(besra.detector == NULL) {
+        std::cerr << "Invalid detector: " << detector_str << std::endl; 
+        return 1; 
+    }
+
 
     cv::Mat vocabulary;
 

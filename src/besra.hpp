@@ -34,6 +34,7 @@
 #include <opencv2/ml/ml.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>
+#include <opencv2/xfeatures2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #ifdef USE_GPU
 #include <opencv2/gpu/gpu.hpp>
@@ -50,13 +51,6 @@ namespace besra {
 
     class Besra {
         private:
-            cv::Ptr<cv::DescriptorMatcher> matcher;
-            cv::Ptr<cv::DescriptorExtractor> extractor;
-            cv::Ptr<cv::FeatureDetector> detector;
-#ifdef USE_GPU
-            cv::Ptr<cv::gpu::SURF_GPU> gpu_surf;
-#endif
-
             bool processLine(std::string line, cv::Mat &descriptors, int &label,
                               cv::Ptr<cv::BOWImgDescriptorExtractor> bow);
 
@@ -64,7 +58,14 @@ namespace besra {
                                                       cv::Ptr<cv::BOWImgDescriptorExtractor> bow = cv::Ptr<cv::BOWImgDescriptorExtractor>());
 
         public:
-            Besra(int minHessian = 600, std::string matcher="BruteForce", std::string detector="SURF");
+            cv::Ptr<cv::DescriptorMatcher> matcher;
+            cv::Ptr<cv::DescriptorExtractor> extractor;
+            cv::Ptr<cv::FeatureDetector> detector;
+#ifdef USE_GPU
+            cv::Ptr<cv::gpu::SURF_GPU> gpu_surf;
+#endif
+
+            Besra(int minHessian = 600, std::string extractor="SURF", std::string detector="SURF");
 
             cv::Mat readImage(const fs::path &file);
 

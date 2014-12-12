@@ -28,6 +28,8 @@ int main(int argc, char** argv) {
     std::string input_path;
     std::string model_cache_path;
     std::string vocab_cache_path;
+    std::string detector_str;
+    std::string extractor_str;
     int limit;
     int threads;
     int minHessian;
@@ -44,6 +46,8 @@ int main(int argc, char** argv) {
         ("threads,t", po::value<int>(&threads)->default_value(1), "number of threads to spawn")
         ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("verbose,v", po::bool_switch(&verbose)->default_value(false), "verbose output")
+        ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector")
+        ("extractor,e", po::value<std::string>(&extractor_str)->default_value("SURF"), "descriptor extractor")
     ;
 
     po::variables_map vm;
@@ -103,7 +107,15 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    besra::Besra besra(minHessian); 
+    besra::Besra besra(minHessian, extractor_str, detector_str); 
+    if(besra.extractor == NULL) {
+        std::cerr << "Invalid extractor: " << extractor_str << std::endl; 
+        return 1; 
+    }
+    if(besra.detector == NULL) {
+        std::cerr << "Invalid detector: " << detector_str << std::endl; 
+        return 1; 
+    }
 
     BOOST_LOG_TRIVIAL(info) << "Loading vocab from file: " << vocab_cache_file.string();
     cv::Mat vocabulary;
@@ -180,7 +192,7 @@ int main(int argc, char** argv) {
                     }
                 } catch(cv::Exception& e) { 
                     const char* err_msg = e.what();
-                    BOOST_LOG_TRIVIAL(error) << "Failed to classify image: " << filepath << " error: " << err_msg;
+                    BOOST_LOG_TRIVIAL(warning) << "Failed to classify image: " << filepath << " error: " << err_msg;
                 } catch( ... ) { 
                     BOOST_LOG_TRIVIAL(error) << "Fatal error classifing image: " << filepath;
                 }
