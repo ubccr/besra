@@ -89,10 +89,18 @@ namespace besra {
             if(this->detector->descriptorType() == CV_32F) {
                 BOOST_LOG_TRIVIAL(info) << "Float descriptor. Using BruteForce matcher";
                 this->matcher = cv::DescriptorMatcher::create("BruteForce");
+                //this->matcher = cv::DescriptorMatcher::create("FlannBased");
             } else {
                 // assume binary?
                 BOOST_LOG_TRIVIAL(info) << "Binary descriptor. Using BruteForce-Hamming matcher";
                 this->matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
+                /*
+                cv::Ptr<cv::flann::IndexParams> indexParams = cv::makePtr<cv::flann::AutotunedIndexParams>();
+                cv::Ptr<cv::flann::SearchParams> searchParams = cv::makePtr<cv::flann::SearchParams>();
+                indexParams->setAlgorithm(cvflann::FLANN_INDEX_LSH);
+                searchParams->setAlgorithm(cvflann::FLANN_INDEX_LSH);
+                this->matcher = cv::makePtr<cv::FlannBasedMatcher>(indexParams, searchParams);
+                */
             }
         }
 
