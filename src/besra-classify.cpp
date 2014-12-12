@@ -156,11 +156,10 @@ int main(int argc, char** argv) {
         if(limit > 0 && threads > limit) {
             threads = limit;
         }
-        omp_set_num_threads(threads);
 #endif
 
         std::ifstream ifs(input_dir.c_str());
-        #pragma omp parallel
+        #pragma omp parallel num_threads(threads)
         {
             int tcount = 0;
             std::string line;

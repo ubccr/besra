@@ -223,13 +223,9 @@ namespace besra {
             threads = 1;
         }
 
-#ifdef OPENMP_FOUND
-        omp_set_num_threads(threads);
-#endif
-
         int count = 0;
         std::ifstream ifs(path.c_str());
-        #pragma omp parallel
+        #pragma omp parallel num_threads(threads)
         {
             int tcount = 0;
             std::string line;
