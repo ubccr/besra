@@ -61,6 +61,7 @@ namespace besra {
                                                       cv::Ptr<cv::BOWImgDescriptorExtractor> bow = cv::Ptr<cv::BOWImgDescriptorExtractor>());
 
         public:
+            bool bayes;
             cv::Ptr<cv::DescriptorMatcher> matcher;
             cv::Ptr<cv::DescriptorExtractor> extractor;
             cv::Ptr<cv::FeatureDetector> detector;
@@ -68,7 +69,7 @@ namespace besra {
             cv::Ptr<cv::gpu::SURF_GPU> gpu_surf;
 #endif
 
-            Besra(int minHessian = 600, std::string extractor="SURF", std::string detector="SURF");
+            Besra(int minHessian = 600, std::string extractor="SURF", std::string detector="SURF", bool bayes = false);
 
             cv::Mat readImage(const fs::path &file);
 

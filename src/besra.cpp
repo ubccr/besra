@@ -43,7 +43,9 @@ namespace besra {
 
     }
 
-    Besra::Besra(int minHessian, std::string extractor, std::string detector) {
+    Besra::Besra(int minHessian, std::string extractor, std::string detector, bool bayes) {
+        this->bayes = bayes;
+
         if(extractor == "SURF") {
             this->extractor = cv::xfeatures2d::SURF::create(minHessian);
         } else if(extractor == "FREAK") {
@@ -293,6 +295,11 @@ namespace besra {
 
         BOOST_LOG_TRIVIAL(info) << "Training StatsModel";
 
+        if(this->bayes) {
+            cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(samples, cv::ml::ROW_SAMPLE, labels);
+            return cv::ml::StatModel::train<cv::ml::NormalBayesClassifier>(trainData);
+        }
+
         cv::Ptr<cv::ml::SVM> svm = cv::ml::SVM::create();
         svm->setType(cv::ml::SVM::C_SVC);
         svm->setKernel(cv::ml::SVM::LINEAR);
@@ -300,10 +307,7 @@ namespace besra {
 
         svm->train(samples, cv::ml::ROW_SAMPLE, labels);
         cv::Ptr<cv::ml::StatModel> mod = svm;
-
-//        cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(samples, cv::ml::ROW_SAMPLE, labels);
         return mod;
-        //return cv::ml::StatModel::train<cv::ml::NormalBayesClassifier>(trainData);
     }
 
     float Besra::classify(const fs::path &path, cv::Ptr<cv::BOWImgDescriptorExtractor> bow, cv::Ptr<cv::ml::StatModel> model) {
@@ -319,7 +323,9 @@ namespace besra {
     }
 
     cv::Ptr<cv::ml::StatModel> Besra::loadStatModel(const fs::path &cache, const cv::Mat &vocabulary) {
-        //return cv::ml::StatModel::load<cv::ml::NormalBayesClassifier>(cache.string());
+        if(this->bayes) {
+            return cv::ml::StatModel::load<cv::ml::NormalBayesClassifier>(cache.string());
+        }
         return cv::ml::StatModel::load<cv::ml::SVM>(cache.string());
     }
 

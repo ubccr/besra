@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
     int threads;
     int minHessian;
     bool verbose;
+    std::string classifier;
     std::string input_path;
     std::string output_path;
     std::string detector_str;
@@ -44,6 +45,7 @@ int main(int argc, char** argv) {
         ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("vocab,b", po::value<std::string>(), "path to vocabulary cache file")
         ("verbose,v", po::bool_switch(&verbose)->default_value(false), "verbose output")
+        ("classifier,j", po::value<std::string>(&classifier)->default_value("svm"), "classifier (svn, bayes)")
         ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector (SURF, BRISK, ORB, KAZE, AKAZE, MSER, SIFT, FAST, GFTT, BLOB)")
         ("extractor,e", po::value<std::string>(&extractor_str)->default_value("SURF"), "descriptor extractor (SURF, FREAK, BRISK, ORB, KAZE, AKAZE, BRIEF, SIFT)")
     ;
@@ -117,6 +119,9 @@ int main(int argc, char** argv) {
         threads = 1;
     }
 
+    if(classifier == "bayes") {
+        besra.bayes = true;
+    }
 
     cv::Mat vocabulary;
 

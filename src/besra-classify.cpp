@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
     std::string vocab_cache_path;
     std::string detector_str;
     std::string extractor_str;
+    std::string classifier;
     int limit;
     int threads;
     int minHessian;
@@ -46,6 +47,7 @@ int main(int argc, char** argv) {
         ("threads,t", po::value<int>(&threads)->default_value(1), "number of threads to spawn")
         ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("verbose,v", po::bool_switch(&verbose)->default_value(false), "verbose output")
+        ("classifier,j", po::value<std::string>(&classifier)->default_value("svm"), "classifier (svn, bayes)")
         ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector (SURF, BRISK, ORB, KAZE, AKAZE, MSER, SIFT, FAST, GFTT, BLOB)")
         ("extractor,e", po::value<std::string>(&extractor_str)->default_value("SURF"), "descriptor extractor (SURF, FREAK, BRISK, ORB, KAZE, AKAZE, BRIEF, SIFT)")
     ;
@@ -121,6 +123,10 @@ int main(int argc, char** argv) {
     if(extractor_str != "SURF" || detector_str != "SURF") {
         // Only SURF appears to be thread safe at the moment
         threads = 1;
+    }
+
+    if(classifier == "bayes") {
+        besra.bayes = true;
     }
 
     BOOST_LOG_TRIVIAL(info) << "Loading vocab from file: " << vocab_cache_file.string();
