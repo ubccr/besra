@@ -44,8 +44,8 @@ int main(int argc, char** argv) {
         ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("vocab,b", po::value<std::string>(), "path to vocabulary cache file")
         ("verbose,v", po::bool_switch(&verbose)->default_value(false), "verbose output")
-        ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector")
-        ("extractor,e", po::value<std::string>(&extractor_str)->default_value("SURF"), "descriptor extractor")
+        ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector (SURF, BRISK, ORB, KAZE, AKAZE, MSER, SIFT, FAST, GFTT, BLOB)")
+        ("extractor,e", po::value<std::string>(&extractor_str)->default_value("SURF"), "descriptor extractor (SURF, FREAK, BRISK, ORB, KAZE, AKAZE, BRIEF, SIFT)")
     ;
 
     po::variables_map vm;
@@ -110,6 +110,11 @@ int main(int argc, char** argv) {
     if(besra.detector == NULL) {
         std::cerr << "Invalid detector: " << detector_str << std::endl; 
         return 1; 
+    }
+
+    if(extractor_str != "SURF" || detector_str != "SURF") {
+        // Only SURF appears to be thread safe at the moment
+        threads = 1;
     }
 
 

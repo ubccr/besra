@@ -26,11 +26,14 @@
 #include <utility>
 #include <string>
 #include <queue>
+#include <stdexcept>
 #include <boost/algorithm/string.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/utility/setup.hpp>
 #include <boost/filesystem.hpp>
+#include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/ml/ml.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/xfeatures2d/nonfree.hpp>

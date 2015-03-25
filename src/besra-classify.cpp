@@ -46,8 +46,8 @@ int main(int argc, char** argv) {
         ("threads,t", po::value<int>(&threads)->default_value(1), "number of threads to spawn")
         ("hessian,k", po::value<int>(&minHessian)->default_value(600), "hessian threshold")
         ("verbose,v", po::bool_switch(&verbose)->default_value(false), "verbose output")
-        ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector")
-        ("extractor,e", po::value<std::string>(&extractor_str)->default_value("SURF"), "descriptor extractor")
+        ("detector,d", po::value<std::string>(&detector_str)->default_value("SURF"), "feature detector (SURF, BRISK, ORB, KAZE, AKAZE, MSER, SIFT, FAST, GFTT, BLOB)")
+        ("extractor,e", po::value<std::string>(&extractor_str)->default_value("SURF"), "descriptor extractor (SURF, FREAK, BRISK, ORB, KAZE, AKAZE, BRIEF, SIFT)")
     ;
 
     po::variables_map vm;
@@ -112,9 +112,15 @@ int main(int argc, char** argv) {
         std::cerr << "Invalid extractor: " << extractor_str << std::endl; 
         return 1; 
     }
+
     if(besra.detector == NULL) {
         std::cerr << "Invalid detector: " << detector_str << std::endl; 
         return 1; 
+    }
+
+    if(extractor_str != "SURF" || detector_str != "SURF") {
+        // Only SURF appears to be thread safe at the moment
+        threads = 1;
     }
 
     BOOST_LOG_TRIVIAL(info) << "Loading vocab from file: " << vocab_cache_file.string();
@@ -146,6 +152,11 @@ int main(int argc, char** argv) {
             } catch(cv::Exception& e) { 
                 const char* err_msg = e.what();
                 BOOST_LOG_TRIVIAL(error) << "Failed to classify image: " << filepath << " error: " << err_msg;
+            } catch(const std::out_of_range& e) { 
+                const char* err_msg = e.what();
+                BOOST_LOG_TRIVIAL(warning) << "No descriptors found. Can't classify image: " << filepath << " error: " << err_msg;
+            } catch( ... ) { 
+                BOOST_LOG_TRIVIAL(error) << "Fatal error classifing image: " << filepath;
             }
 
             if(limit > 0 && count > limit) break;
@@ -192,6 +203,9 @@ int main(int argc, char** argv) {
                 } catch(cv::Exception& e) { 
                     const char* err_msg = e.what();
                     BOOST_LOG_TRIVIAL(warning) << "Failed to classify image: " << filepath << " error: " << err_msg;
+                } catch(const std::out_of_range& e) { 
+                    const char* err_msg = e.what();
+                    BOOST_LOG_TRIVIAL(warning) << "No descriptors found. Can't classify image: " << filepath << " error: " << err_msg;
                 } catch( ... ) { 
                     BOOST_LOG_TRIVIAL(error) << "Fatal error classifing image: " << filepath;
                 }

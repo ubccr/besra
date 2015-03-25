@@ -45,7 +45,7 @@ namespace besra {
 
     Besra::Besra(int minHessian, std::string extractor, std::string detector) {
         if(extractor == "SURF") {
-            this->extractor = cv::xfeatures2d::SURF::create();
+            this->extractor = cv::xfeatures2d::SURF::create(minHessian);
         } else if(extractor == "FREAK") {
             this->extractor = cv::xfeatures2d::FREAK::create();
         } else if(extractor == "BRISK") {
@@ -63,7 +63,7 @@ namespace besra {
         }
 
         if(detector == "SURF") {
-            this->detector = cv::xfeatures2d::SURF::create();
+            this->detector = cv::xfeatures2d::SURF::create(minHessian);
         } else if(detector == "BRISK") {
             this->detector = cv::BRISK::create();
         } else if(detector == "ORB") {
@@ -293,22 +293,33 @@ namespace besra {
 
         BOOST_LOG_TRIVIAL(info) << "Training StatsModel";
 
-        cv::ml::SVM::Params params;
-        params.svmType = cv::ml::SVM::C_SVC;
-        params.kernelType = cv::ml::SVM::LINEAR;
-        params.termCrit = cv::TermCriteria(cv::TermCriteria::MAX_ITER+cv::TermCriteria::EPS, 1000, FLT_EPSILON);
+        cv::Ptr<cv::ml::SVM> svm = cv::ml::SVM::create();
+        svm->setType(cv::ml::SVM::C_SVC);
+        svm->setKernel(cv::ml::SVM::LINEAR);
+        svm->setTermCriteria(cv::TermCriteria(cv::TermCriteria::MAX_ITER+cv::TermCriteria::EPS, 1000, FLT_EPSILON));
 
-        return cv::ml::StatModel::train<cv::ml::SVM>(samples, cv::ml::ROW_SAMPLE, labels, params);
+        svm->train(samples, cv::ml::ROW_SAMPLE, labels);
+        cv::Ptr<cv::ml::StatModel> mod = svm;
+
+//        cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(samples, cv::ml::ROW_SAMPLE, labels);
+        return mod;
+        //return cv::ml::StatModel::train<cv::ml::NormalBayesClassifier>(trainData);
     }
 
     float Besra::classify(const fs::path &path, cv::Ptr<cv::BOWImgDescriptorExtractor> bow, cv::Ptr<cv::ml::StatModel> model) {
         cv::Mat img = readImage(path);
         cv::Mat features = detectAndCompute(img, bow);
+
+        if(features.empty()) {
+            throw std::out_of_range("Empty features");
+        }
+
         float res = model->predict(features);
         return res;
     }
 
     cv::Ptr<cv::ml::StatModel> Besra::loadStatModel(const fs::path &cache, const cv::Mat &vocabulary) {
+        //return cv::ml::StatModel::load<cv::ml::NormalBayesClassifier>(cache.string());
         return cv::ml::StatModel::load<cv::ml::SVM>(cache.string());
     }
 
