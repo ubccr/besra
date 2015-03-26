@@ -106,6 +106,13 @@ namespace besra {
             }
         }
 
+        if(this->detector != NULL && this->extractor != NULL) {
+            if(this->detector->descriptorType() != this->extractor->descriptorType()) {
+                throw std::invalid_argument("Invalid detector/extractor combination");
+            }
+        }
+
+
 #ifdef USE_GPU
         gpu_surf = new cv::gpu::SURF_GPU(minHessian);
 #endif
