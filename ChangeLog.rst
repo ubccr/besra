@@ -1,6 +1,11 @@
 ChangeLog
 =========
 
+v0.0.3
+----------------------
+
+- Add check for supported detector/extractor combinations
+
 v0.0.2
 ----------------------
 

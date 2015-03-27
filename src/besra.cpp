@@ -108,7 +108,8 @@ namespace besra {
 
         if(this->detector != NULL && this->extractor != NULL) {
             if(this->detector->descriptorType() != this->extractor->descriptorType()) {
-                throw std::invalid_argument("Invalid detector/extractor combination");
+                this->detector = cv::Ptr<cv::FeatureDetector>(); // NULL
+                this->extractor = cv::Ptr<cv::DescriptorExtractor>(); // NULL
             }
         }
 

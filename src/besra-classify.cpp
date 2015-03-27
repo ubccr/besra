@@ -110,13 +110,8 @@ int main(int argc, char** argv) {
 #endif
 
     besra::Besra besra(minHessian, extractor_str, detector_str); 
-    if(besra.extractor == NULL) {
-        std::cerr << "Invalid extractor: " << extractor_str << std::endl; 
-        return 1; 
-    }
-
-    if(besra.detector == NULL) {
-        std::cerr << "Invalid detector: " << detector_str << std::endl; 
+    if(besra.extractor == NULL || besra.detector == NULL) {
+        std::cerr << "Invalid detector/extractor combination: " << extractor_str << " / " << detector_str << std::endl; 
         return 1; 
     }
 
